@@ -60,8 +60,12 @@ public class Jdbc {
         if (CollectionUtils.isEmpty(result)) {
             return new LinkedHashMap<>();
         }
-        return result.get(0).keySet().stream()
-                .collect(Collectors.toMap(k -> k, k -> result.stream().map(m -> m.get(k)).collect(Collectors.toCollection(LinkedList::new))));
+        Map<String, List<Object>> map = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : result.get(0).entrySet()) {
+            List<Object> list = result.stream().map(m -> m.get(entry.getKey())).collect(Collectors.toCollection(LinkedList::new));
+            map.put(entry.getKey(), list);
+        }
+        return map;
     }
 
     public static List<Map<String, Object>> queryList(String key, String schema, String sql, Object... args) throws Exception {
