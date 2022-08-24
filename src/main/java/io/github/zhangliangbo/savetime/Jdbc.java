@@ -1,4 +1,4 @@
-package com.fragrans.savetime;
+package io.github.zhangliangbo.savetime;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

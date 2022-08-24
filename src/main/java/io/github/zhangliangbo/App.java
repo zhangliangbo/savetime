@@ -1,4 +1,4 @@
-package com.fragrans;
+package io.github.zhangliangbo;
 
 /**
  * Hello world!
