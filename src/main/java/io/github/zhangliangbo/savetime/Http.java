@@ -4,24 +4,29 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.HttpHeaders;
-import org.apache.http.entity.ContentType;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.fluent.Content;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.client5.http.fluent.Response;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.util.Timeout;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.*;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author zhangliangbo
@@ -35,16 +40,7 @@ public class Http {
         Http.config = config;
     }
 
-    private static final HttpClient client = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .connectTimeout(Duration.ofSeconds(20))
-            .build();
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    public HttpClient getClient() {
-        return client;
-    }
 
     public ObjectMapper getObjectMapper() {
         return objectMapper;
@@ -88,12 +84,13 @@ public class Http {
         return map;
     }
 
-    public static JsonNode fromJson(HttpResponse<String> s) {
-        System.out.println(s.request().uri());
+    public static JsonNode fromJson(Content s) {
         try {
-            return objectMapper.readTree(s.body());
+            return objectMapper.readTree(s.asBytes());
         } catch (Exception e) {
-            return new TextNode(s.body());
+            ObjectNode objectNode = JsonNodeFactory.instance.objectNode();
+            objectNode.put("response", s.asString());
+            return objectNode;
         }
     }
 
@@ -112,10 +109,10 @@ public class Http {
         return env;
     }
 
-    public static JsonNode send(HttpRequest.Builder builder) {
-        return client.sendAsync(builder.build(), BodyHandlers.ofString())
-                .thenApply(Http::fromJson)
-                .join();
+    public static JsonNode send(Request request) throws IOException {
+        Response response = request.execute();
+        Content content = response.returnContent();
+        return fromJson(content);
     }
 
     private static TokenGenerator tokenGenerator;
@@ -150,14 +147,18 @@ public class Http {
         return pair.getLeft();
     }
 
-    public static JsonNode get(String key, String url, Map<String, Object> query, Map<String, String> header) throws Exception {
+    private static URI createUri(String key, String url, Map<String, Object> query) throws IOException {
         JsonNode env = readEnv(key);
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(env.get("gateway").asText() + url + queryString(query)))
-                .timeout(Duration.ofMinutes(1))
-                .GET();
-        processHeader(key, builder, header);
-        return send(builder);
+        URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
+        System.out.println(uri);
+        return uri;
+    }
+
+    public static JsonNode get(String key, String url, Map<String, Object> query, Map<String, String> header) throws Exception {
+        URI uri = createUri(key, url, query);
+        Request request = Request.get(uri).connectTimeout(Timeout.ofMinutes(1));
+        processHeader(key, request, header);
+        return send(request);
     }
 
     public static JsonNode get(String key, String url, Map<String, Object> query) throws Exception {
@@ -169,29 +170,27 @@ public class Http {
         return get(key, url, null);
     }
 
-    private static void processHeader(String key, HttpRequest.Builder builder, Map<String, String> header) throws IOException {
+    private static void processHeader(String key, Request request, Map<String, String> header) throws IOException {
         if (Objects.nonNull(header)) {
             for (Map.Entry<String, String> entry : header.entrySet()) {
-                builder.header(entry.getKey(), entry.getValue());
+                request.addHeader(entry.getKey(), entry.getValue());
             }
         }
         if (Objects.nonNull(tokenGenerator)) {
             String token = makeToken(key);
-            builder.header(HttpHeaders.AUTHORIZATION, token);
+            request.addHeader(HttpHeaders.AUTHORIZATION, token);
         }
     }
 
     //post请求
     public static JsonNode post(String key, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws IOException {
-        JsonNode env = readEnv(key);
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(env.get("gateway").asText() + url + queryString(query)))
-                .timeout(Duration.ofMinutes(2))
-                .POST(body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(toJson(body)));
-        processHeader(key, builder, header);
-        return client.sendAsync(builder.build(), BodyHandlers.ofString())
-                .thenApply(Http::fromJson)
-                .join();
+        URI uri = createUri(key, url, query);
+        Request request = Request.post(uri);
+        if (Objects.nonNull(body)) {
+            request.bodyString(toJson(body), null);
+        }
+        processHeader(key, request, header);
+        return send(request);
     }
 
     public static JsonNode post(String key, String url, Map<String, Object> query, Map<String, Object> body) throws IOException {
@@ -204,27 +203,89 @@ public class Http {
     }
 
     public static JsonNode post(String key, String url) throws IOException {
-        return post(key, url, null, null);
+        return post(key, url, null);
     }
 
     public static JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws IOException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(env.get("gateway").asText() + url + queryString(query)))
-                .timeout(Duration.ofMinutes(2))
-                .POST(body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(toJson(body)));
+        URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
+        System.out.println(uri);
+        Request request = Request.post(uri);
+        if (Objects.nonNull(body)) {
+            request.bodyString(toJson(body), null);
+        }
         if (Objects.nonNull(header)) {
             for (Map.Entry<String, String> entry : header.entrySet()) {
-                builder.header(entry.getKey(), entry.getValue());
+                request.addHeader(entry.getKey(), entry.getValue());
             }
         }
-        return client.sendAsync(builder.build(), BodyHandlers.ofString())
-                .thenApply(Http::fromJson)
-                .join();
+        return send(request);
     }
 
     public static JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Map<String, Object> body) throws IOException {
         LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return postToken(env, url, query, body, header);
+    }
+
+    public static JsonNode postMultipart(String key, String url, Map<String, Object> query, Map<String, Object> body) throws IOException {
+        MultipartEntityBuilder multipartEntityBuilder = MultipartEntityBuilder.create();
+        for (Map.Entry<String, Object> entry : body.entrySet()) {
+            if (Objects.isNull(entry.getValue())) {
+                continue;
+            }
+            if (entry.getValue() instanceof File) {
+                File f = (File) entry.getValue();
+                multipartEntityBuilder.addBinaryBody(entry.getKey(), f, ContentType.APPLICATION_OCTET_STREAM, f.getName());
+            } else {
+                multipartEntityBuilder.addTextBody(entry.getKey(), entry.getValue().toString());
+            }
+        }
+        HttpEntity httpEntity = multipartEntityBuilder.build();
+
+        URI uri = createUri(key, url, query);
+        Request request = Request.post(uri).body(httpEntity).connectTimeout(Timeout.ofMinutes(1));
+        processHeader(key, request, null);
+        return send(request);
+    }
+
+    //put请求
+    public static JsonNode put(String key, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws IOException {
+        URI uri = createUri(key, url, query);
+        Request request = Request.put(uri);
+        if (Objects.nonNull(body)) {
+            request.bodyString(toJson(body), null);
+        }
+        processHeader(key, request, header);
+        return send(request);
+    }
+
+    public static JsonNode put(String key, String url, Map<String, Object> query, Map<String, Object> body) throws IOException {
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        return put(key, url, query, body, header);
+    }
+
+    public static JsonNode put(String key, String url, Map<String, Object> query) throws IOException {
+        return put(key, url, query, null);
+    }
+
+    public static JsonNode put(String key, String url) throws IOException {
+        return put(key, url, null);
+    }
+
+    //delete请求
+    public static JsonNode delete(String key, String url, Map<String, Object> query, Map<String, String> header) throws IOException {
+        URI uri = createUri(key, url, query);
+        Request request = Request.delete(uri);
+        processHeader(key, request, header);
+        return send(request);
+    }
+
+    public static JsonNode delete(String key, String url, Map<String, Object> query) throws IOException {
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        return delete(key, url, query, header);
+    }
+
+    public static JsonNode delete(String key, String url) throws IOException {
+        return delete(key, url, null);
     }
 
 }
