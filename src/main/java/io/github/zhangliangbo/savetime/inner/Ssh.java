@@ -1,15 +1,13 @@
-package io.github.zhangliangbo.savetime;
+package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import io.github.zhangliangbo.savetime.inner.AbstractConfigurable;
 import org.apache.commons.lang3.RandomUtils;
 
 import java.net.URI;
-import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -18,23 +16,17 @@ import java.util.stream.Stream;
  * @author zhangliangbo
  * @since 2022/8/21
  */
-public class Ssh {
-    private static URL config;
+public class Ssh extends AbstractConfigurable<Session> {
 
-    public static void setConfig(URL config) {
-        Ssh.config = config;
+    @Override
+    protected boolean isValid(Session session) {
+        return session.isConnected();
     }
 
-    private static final Map<String, Session> sshMap = new HashMap<>();
-
-    public static Session getOrCreateSession(String key) throws Exception {
-        Preconditions.checkNotNull(config, "配置文件不能为空");
-        Session result = sshMap.get(key);
-        if (result != null) {
-            return result;
-        }
+    @Override
+    protected Session create(String key) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode treeNode = objectMapper.readTree(config);
+        JsonNode treeNode = objectMapper.readTree(getConfig());
         JsonNode ssh = treeNode.get(key);
         JSch jsch = new JSch();
         Session session = jsch.getSession(
@@ -48,9 +40,12 @@ public class Ssh {
         session.connect();
 
         System.out.println("ssh开启成功 " + key);
-        sshMap.put(key, session);
 
         return session;
+    }
+
+    protected void clearOne(Session session) {
+        session.disconnect();
     }
 
     /**
@@ -59,11 +54,11 @@ public class Ssh {
      * @return 本地转发端口
      * @throws Exception
      */
-    public static String forward(JsonNode ssh, URI uri, String url) throws Exception {
+    public String forward(JsonNode ssh, URI uri, String url) throws Exception {
         if (Objects.isNull(ssh)) {
             return url;
         }
-        Session session = Ssh.getOrCreateSession(ssh.asText());
+        Session session = getOrCreate(ssh.asText());
 
         List<String> hadDirect = Arrays.stream(session.getPortForwardingL())
                 .filter(it -> it.contains(uri.getHost() + ":" + uri.getPort()))
@@ -73,15 +68,20 @@ public class Ssh {
             Set<Integer> usedPort = Stream.of(session.getPortForwardingL())
                     .map(it -> Integer.parseInt(it.split(":")[0]))
                     .collect(Collectors.toSet());
-            int localPort = RandomUtils.nextInt(49152, 65535);
-            while (true) {
+            do {
+                int localPort = RandomUtils.nextInt(49152, 65535);
                 if (usedPort.contains(localPort)) {
-                    localPort = RandomUtils.nextInt(49152, 65535);
-                } else {
-                    break;
+                    port = -1;
+                    continue;
+                }
+                try {
+                    port = session.setPortForwardingL(localPort, uri.getHost(), uri.getPort());
+                } catch (Exception e) {
+                    System.out.println("ssh端口已占用 " + localPort);
+                    port = -1;
                 }
             }
-            port = session.setPortForwardingL(localPort, uri.getHost(), uri.getPort());
+            while (port == -1);
         } else {
             port = Integer.parseInt(hadDirect.get(0).split(":")[0]);
         }
@@ -91,16 +91,8 @@ public class Ssh {
         return url;
     }
 
-    public static void clear() {
-        for (Map.Entry<String, Session> entry : sshMap.entrySet()) {
-            System.out.println(entry.getKey() + "断开连接");
-            entry.getValue().disconnect();
-        }
-        sshMap.clear();
-    }
-
-    public static String[] showForwardL(String key) throws JSchException {
-        Session session = sshMap.get(key);
+    public String[] showForwardL(String key) throws Exception {
+        Session session = getOrCreate(key);
         if (Objects.isNull(session)) {
             return new String[0];
         }

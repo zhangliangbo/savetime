@@ -1,9 +1,10 @@
-package io.github.zhangliangbo.savetime;
+package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import io.github.zhangliangbo.savetime.ST;
+import io.github.zhangliangbo.savetime.inner.AbstractConfigurable;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbutils.QueryRunner;
@@ -11,8 +12,8 @@ import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,42 +21,43 @@ import java.util.stream.Collectors;
  * @author zhangliangbo
  * @since 2022/8/21
  */
-public class Jdbc {
-    private static URL config;
+public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
-    public static void setConfig(URL config) {
-        Jdbc.config = config;
+    @Override
+    protected boolean isValid(QueryRunner queryRunner) {
+        return true;
     }
 
-    private static final Map<String, QueryRunner> runnerMap = new HashMap<>();
-
-    public static QueryRunner getOrCreateRunner(String env, String schema) throws Exception {
-        Preconditions.checkNotNull(config, "配置文件不能为空");
-        String key = env + "-" + schema;
-        QueryRunner result = runnerMap.get(key);
-        if (result != null) {
-            return result;
-        }
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode mysql = objectMapper.readTree(config).get(env).get(schema);
+    @Override
+    protected QueryRunner create(String key) throws Exception {
+        String[] split = key.split("-");
+        JsonNode mysql = get(split[0], split[1]);
         String url = mysql.get("url").asText();
         URI uri = URI.create(url.replace("jdbc:", ""));
         String username = mysql.get("username").asText();
         String password = mysql.get("password").asText();
         JsonNode ssh = mysql.get("ssh");
 
-        url = Ssh.forward(ssh, uri, url);
+        url = ST.ssh.forward(ssh, uri, url);
 
         BasicDataSource dataSource = new BasicDataSource();
         dataSource.setUrl(url);
         dataSource.setUsername(username);
         dataSource.setPassword(password);
-        QueryRunner queryRunner = new QueryRunner(dataSource);
-        runnerMap.put(key, queryRunner);
-        return queryRunner;
+        return new QueryRunner(dataSource);
     }
 
-    public static Map<String, List<Object>> queryNoRetry(String key, String schema, String sql, Object... args) throws Exception {
+    public JsonNode get(String env, String schema) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readTree(getConfig()).get(env).get(schema);
+    }
+
+    public QueryRunner getOrCreateRunner(String env, String schema) throws Exception {
+        String key = env + "-" + schema;
+        return getOrCreate(key);
+    }
+
+    public Map<String, List<Object>> queryNoRetry(String key, String schema, String sql, Object... args) throws Exception {
         List<Map<String, Object>> result = queryList(key, schema, sql, args);
         if (CollectionUtils.isEmpty(result)) {
             return new LinkedHashMap<>();
@@ -68,7 +70,7 @@ public class Jdbc {
         return map;
     }
 
-    public static List<Map<String, Object>> queryList(String key, String schema, String sql, Object... args) throws Exception {
+    public List<Map<String, Object>> queryList(String key, String schema, String sql, Object... args) throws Exception {
         return getOrCreateRunner(key, schema)
                 .query(sql, new MapListHandler(), args);
     }
@@ -77,8 +79,8 @@ public class Jdbc {
         T operate(String key, String schema, String sql, Object... args) throws Exception;
     }
 
-    public static <T> T retry(RetryOperation<T> retryOperation,
-                              String key, String schema, String sql, Object... args) throws Exception {
+    public <T> T retry(RetryOperation<T> retryOperation,
+                       String key, String schema, String sql, Object... args) throws Exception {
         try {
             return retryOperation.operate(key, schema, sql, args);
         } catch (Exception e) {
@@ -86,8 +88,8 @@ public class Jdbc {
             if (retry) {
                 System.out.println("连接报错，开始重试");
 
-                runnerMap.clear();
-                Ssh.clear();
+                clearAll();
+                ST.ssh.clearAll();
 
                 return retryOperation.operate(key, schema, sql, args);
             }
@@ -95,28 +97,28 @@ public class Jdbc {
         }
     }
 
-    public static Map<String, List<Object>> query(String key, String schema, String sql, Object... args) throws Exception {
-        return retry(Jdbc::queryNoRetry, key, schema, sql, args);
+    public Map<String, List<Object>> query(String key, String schema, String sql, Object... args) throws Exception {
+        return retry(this::queryNoRetry, key, schema, sql, args);
     }
 
-    public static int updateNoRetry(String key, String schema, String sql, Object... args) throws Exception {
+    public int updateNoRetry(String key, String schema, String sql, Object... args) throws Exception {
         return getOrCreateRunner(key, schema).update(sql, args);
     }
 
-    public static int update(String key, String schema, String sql, Object... args) throws Exception {
-        return retry(Jdbc::updateNoRetry, key, schema, sql, args);
+    public int update(String key, String schema, String sql, Object... args) throws Exception {
+        return retry(this::updateNoRetry, key, schema, sql, args);
     }
 
-    public static int[] batchNoRetry(String key, String schema, String sql, Object[][] args) throws Exception {
+    public int[] batchNoRetry(String key, String schema, String sql, Object[][] args) throws Exception {
         return getOrCreateRunner(key, schema).batch(sql, args);
     }
 
-    public static String createTableSql(String key, String schema, String table) throws Exception {
+    public String createTableSql(String key, String schema, String table) throws Exception {
         return query(key, schema, "show create table " + table)
                 .get("Create Table").get(0).toString();
     }
 
-    public static List<String> getColumnNames(String key, String schema, String table) throws Exception {
+    public List<String> getColumnNames(String key, String schema, String table) throws Exception {
         return query(key, schema,
                 "show columns from " + table).get("Field")
                 .stream().map(String::valueOf)
@@ -124,7 +126,7 @@ public class Jdbc {
     }
 
     //备份数据表
-    public static Pair<Long, Long> backup(String key, String schema, String table) throws Exception {
+    public Pair<Long, Long> backup(String key, String schema, String table) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
 
         List<String> columns = getColumnNames(key, schema, table);
