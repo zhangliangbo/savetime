@@ -170,7 +170,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     //post请求
-    public JsonNode post(String key, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws Exception {
+    public JsonNode post(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.post(uri);
         if (Objects.nonNull(body)) {
@@ -180,7 +180,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return send(request);
     }
 
-    public JsonNode post(String key, String url, Map<String, Object> query, Map<String, Object> body) throws Exception {
+    public JsonNode post(String key, String url, Map<String, Object> query, Object body) throws Exception {
         LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return post(key, url, query, body, header);
     }
@@ -193,7 +193,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return post(key, url, null);
     }
 
-    public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws Exception {
+    public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
         System.out.println(uri);
         Request request = Request.post(uri);
@@ -208,7 +208,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return send(request);
     }
 
-    public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Map<String, Object> body) throws Exception {
+    public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Object body) throws Exception {
         LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return postToken(env, url, query, body, header);
     }
@@ -235,7 +235,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     //put请求
-    public JsonNode put(String key, String url, Map<String, Object> query, Map<String, Object> body, Map<String, String> header) throws Exception {
+    public JsonNode put(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.put(uri);
         if (Objects.nonNull(body)) {
@@ -245,7 +245,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return send(request);
     }
 
-    public JsonNode put(String key, String url, Map<String, Object> query, Map<String, Object> body) throws Exception {
+    public JsonNode put(String key, String url, Map<String, Object> query, Object body) throws Exception {
         LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return put(key, url, query, body, header);
     }
