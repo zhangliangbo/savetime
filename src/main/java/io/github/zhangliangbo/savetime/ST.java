@@ -1,9 +1,6 @@
 package io.github.zhangliangbo.savetime;
 
-import io.github.zhangliangbo.savetime.inner.Http;
-import io.github.zhangliangbo.savetime.inner.Jdbc;
-import io.github.zhangliangbo.savetime.inner.Lettuce;
-import io.github.zhangliangbo.savetime.inner.Ssh;
+import io.github.zhangliangbo.savetime.inner.*;
 import io.vavr.collection.List;
 
 /**
@@ -15,14 +12,15 @@ public class ST {
     public static final Http http = new Http();
     public static final Jdbc jdbc = new Jdbc();
     public static final Lettuce lettuce = new Lettuce();
+    public static final IO io = new IO();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
-        return io.vavr.collection.List.ofAll(iterable);
+        return List.ofAll(iterable);
     }
 
     @SafeVarargs
     public static <T> List<T> listOf(T... t) {
-        return io.vavr.collection.List.of(t);
+        return List.of(t);
     }
 
 }
