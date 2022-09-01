@@ -2,13 +2,13 @@ package io.github.zhangliangbo.savetime.inner;
 
 import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Iterator;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * @author zhangliangbo
@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  */
 public class IO {
     //逐行读csv
-    public Pair<Long, Long> csvByLine(URL url, Consumer<String[]> consumer, int skip) throws IOException {
+    public Pair<Long, Long> csvByLine(URL url, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         CSVReader reader = new CSVReader(new InputStreamReader(url.openStream()));
@@ -26,7 +26,7 @@ public class IO {
         long line = 0;
         while (iterator.hasNext()) {
             String[] next = iterator.next();
-            consumer.accept(next);
+            consumer.accept(line, next);
             line++;
         }
         reader.close();
