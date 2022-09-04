@@ -1,12 +1,10 @@
 package io.github.zhangliangbo.savetime.inner;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
+import io.github.zhangliangbo.savetime.ST;
 import io.github.zhangliangbo.savetime.TokenGenerator;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.tuple.Pair;
@@ -21,7 +19,6 @@ import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.util.Timeout;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -35,16 +32,10 @@ import java.util.Optional;
  */
 public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     private TokenGenerator tokenGenerator;
 
     public void setTokenGenerator(TokenGenerator tokenGenerator) {
         this.tokenGenerator = tokenGenerator;
-    }
-
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
     }
 
     @Override
@@ -52,8 +43,8 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return triple != null && !(triple.getRight() + 1000 < System.currentTimeMillis());
     }
 
-    private JsonNode getNode(String key) throws IOException {
-        return objectMapper.readTree(getConfig()).get(key);
+    private JsonNode getNode(String key) throws Exception {
+        return ST.io.readTree(getConfig()).get(key);
     }
 
     @Override
@@ -83,36 +74,9 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return "?" + Joiner.on("&").withKeyValueSeparator("=").join(copy);
     }
 
-    public String toJson(Object obj) throws JsonProcessingException {
-        if (obj instanceof String) {
-            return (String) obj;
-        }
-        return objectMapper.writeValueAsString(obj);
-    }
-
-    public Map<String, Object> toMap(JsonNode jsonNode) throws JsonProcessingException {
-        String json = objectMapper.writeValueAsString(jsonNode);
-        return objectMapper.readValue(json, new TypeReference<>() {
-        });
-    }
-
-    public Map<String, Object> toMap(File file) throws Exception {
-        return toMap(file, true);
-    }
-
-    public Map<String, Object> toMap(File file, boolean filterNull) throws Exception {
-        Map<String, Object> map = objectMapper.readValue(file, new TypeReference<>() {
-        });
-        if (!filterNull) {
-            return map;
-        }
-        map.entrySet().removeIf(next -> Objects.isNull(next.getValue()));
-        return map;
-    }
-
     public JsonNode fromJson(Content s) {
         try {
-            return objectMapper.readTree(s.asBytes());
+            return ST.io.readTree(s.asBytes());
         } catch (Exception e) {
             ObjectNode objectNode = JsonNodeFactory.instance.objectNode();
             objectNode.put("response", s.asString());
@@ -175,7 +139,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         URI uri = createUri(key, url, query);
         Request request = Request.post(uri);
         if (Objects.nonNull(body)) {
-            request.bodyString(toJson(body), null);
+            request.bodyString(ST.io.toJson(body), null);
         }
         processHeader(key, request, header);
         return send(request);
@@ -199,7 +163,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         System.out.println(uri);
         Request request = Request.post(uri);
         if (Objects.nonNull(body)) {
-            request.bodyString(toJson(body), null);
+            request.bodyString(ST.io.toJson(body), null);
         }
         if (Objects.nonNull(header)) {
             for (Map.Entry<String, String> entry : header.entrySet()) {
@@ -240,7 +204,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         URI uri = createUri(key, url, query);
         Request request = Request.put(uri);
         if (Objects.nonNull(body)) {
-            request.bodyString(toJson(body), null);
+            request.bodyString(ST.io.toJson(body), null);
         }
         processHeader(key, request, header);
         return send(request);

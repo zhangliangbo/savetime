@@ -1,5 +1,9 @@
 package io.github.zhangliangbo.savetime.inner;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
 import org.apache.commons.collections4.CollectionUtils;
@@ -11,9 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 /**
@@ -21,6 +23,11 @@ import java.util.function.BiConsumer;
  * @since 2022/8/29
  */
 public class IO {
+    /**
+     * json
+     */
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     /**
      * 逐行读取数据
      *
@@ -94,6 +101,41 @@ public class IO {
 
     public String fileString(File file) throws IOException {
         return FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+    }
+
+    public String toJson(Object obj) throws JsonProcessingException {
+        if (obj instanceof String) {
+            return (String) obj;
+        }
+        return objectMapper.writeValueAsString(obj);
+    }
+
+    public Map<String, Object> toMap(JsonNode jsonNode) throws JsonProcessingException {
+        String json = objectMapper.writeValueAsString(jsonNode);
+        return objectMapper.readValue(json, new TypeReference<>() {
+        });
+    }
+
+    public Map<String, Object> toMap(File file) throws Exception {
+        return toMap(file, true);
+    }
+
+    public Map<String, Object> toMap(File file, boolean filterNull) throws Exception {
+        Map<String, Object> map = objectMapper.readValue(file, new TypeReference<>() {
+        });
+        if (!filterNull) {
+            return map;
+        }
+        map.entrySet().removeIf(next -> Objects.isNull(next.getValue()));
+        return map;
+    }
+
+    public JsonNode readTree(URL url) throws IOException {
+        return objectMapper.readTree(url);
+    }
+
+    public JsonNode readTree(byte[] bytes) throws IOException {
+        return objectMapper.readTree(bytes);
     }
 
 }

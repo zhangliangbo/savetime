@@ -1,6 +1,7 @@
 package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.zhangliangbo.savetime.ST;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +23,7 @@ public class RabbitWeb extends Http {
     }
 
     public JsonNode exchangePublish(String key, String virtualHost, String exchange, Object body, Map<String, Object> headers) throws Exception {
-        Object payload = body instanceof String ? body : toJson(body);
+        Object payload = body instanceof String ? body : ST.io.toJson(body);
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("delivery_mode", 1);
         if (Objects.nonNull(headers) && !headers.isEmpty()) {
