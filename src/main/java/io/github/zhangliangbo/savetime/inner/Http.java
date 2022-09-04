@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
 import io.github.zhangliangbo.savetime.TokenGenerator;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
@@ -273,6 +274,12 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
     public JsonNode delete(String key, String url) throws Exception {
         return delete(key, url, null);
+    }
+
+    public String basicAuthorization(String username, String password) {
+        return "Basic " + Base64.encodeBase64String(
+                (username + ":" + password).getBytes(StandardCharsets.UTF_8)
+        );
     }
 
 }

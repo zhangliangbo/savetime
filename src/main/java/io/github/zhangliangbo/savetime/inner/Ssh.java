@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import io.github.zhangliangbo.savetime.inner.AbstractConfigurable;
 import org.apache.commons.lang3.RandomUtils;
 
 import java.net.URI;

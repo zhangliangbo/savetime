@@ -3,7 +3,6 @@ package io.github.zhangliangbo.savetime.inner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.zhangliangbo.savetime.ST;
-import io.github.zhangliangbo.savetime.inner.AbstractConfigurable;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;

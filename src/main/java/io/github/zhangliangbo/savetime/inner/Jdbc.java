@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 import io.github.zhangliangbo.savetime.ST;
-import io.github.zhangliangbo.savetime.inner.AbstractConfigurable;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbutils.QueryRunner;

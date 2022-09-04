@@ -1,8 +1,6 @@
 package io.github.zhangliangbo.savetime.inner;
 
 import com.google.common.base.Preconditions;
-import com.jcraft.jsch.Session;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.net.URL;
 import java.util.HashMap;
