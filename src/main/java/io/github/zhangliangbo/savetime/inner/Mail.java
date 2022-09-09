@@ -28,7 +28,7 @@ public class Mail extends AbstractConfigurable<JsonNode> {
         email.setHostName(jsonNode.get("host").asText());
         email.setSmtpPort(jsonNode.get("port").asInt());
         email.setAuthenticator(new DefaultAuthenticator(jsonNode.get("username").asText(), jsonNode.get("password").asText()));
-        email.setSSLOnConnect(true);
+        email.setSSLOnConnect(jsonNode.get("port").asInt() == 465);
         email.setFrom(jsonNode.get("username").asText());
         return email;
     }
