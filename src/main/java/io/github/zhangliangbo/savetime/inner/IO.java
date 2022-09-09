@@ -40,7 +40,7 @@ public class IO {
     public Pair<Long, Long> csvByLine(URL url, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
-        CSVReader reader = new CSVReader(new InputStreamReader(url.openStream()));
+        CSVReader reader = new CSVReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
         reader.skip(skip);
 
         Iterator<String[]> iterator = reader.iterator();
@@ -57,6 +57,19 @@ public class IO {
     }
 
     /**
+     * 逐行读取数据
+     *
+     * @param file     文件
+     * @param consumer 消费者
+     * @param skip     跳过行数
+     * @return 【处理的行数，时间ms】
+     * @throws IOException 异常
+     */
+    public Pair<Long, Long> csvByLine(File file, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
+        return csvByLine(file.toURI().toURL(), consumer, skip);
+    }
+
+    /**
      * 分批读取数据
      *
      * @param url      数据源
@@ -69,7 +82,7 @@ public class IO {
     public Pair<Long, Long> csvByBatch(URL url, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
-        CSVReader reader = new CSVReader(new InputStreamReader(url.openStream()));
+        CSVReader reader = new CSVReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
         reader.skip(skip);
 
         Iterator<String[]> iterator = reader.iterator();
@@ -95,14 +108,49 @@ public class IO {
         return Pair.of(line, stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
     }
 
+    /**
+     * 分批读取数据
+     *
+     * @param file     文件
+     * @param consumer 消费者
+     * @param skip     跳过行数
+     * @param batch    每批大小
+     * @return 【处理的批次数量，时间ms】
+     * @throws IOException 异常
+     */
+    public Pair<Long, Long> csvByBatch(File file, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
+        return csvByBatch(file.toURI().toURL(), consumer, skip, batch);
+    }
+
+    /**
+     * 文件转字符串
+     *
+     * @param url 数据源
+     * @return 字符串
+     * @throws IOException 异常
+     */
     public String fileString(URL url) throws IOException {
         return fileString(new File(url.getFile()));
     }
 
+    /**
+     * 文件转字符串
+     *
+     * @param file 文件
+     * @return 字符串
+     * @throws IOException 异常
+     */
     public String fileString(File file) throws IOException {
         return FileUtils.readFileToString(file, StandardCharsets.UTF_8);
     }
 
+    /**
+     * 文对象转json字符串
+     *
+     * @param obj 对象
+     * @return json字符串
+     * @throws JsonProcessingException 异常
+     */
     public String toJson(Object obj) throws JsonProcessingException {
         if (obj instanceof String) {
             return (String) obj;
@@ -136,6 +184,10 @@ public class IO {
 
     public JsonNode readTree(byte[] bytes) throws IOException {
         return objectMapper.readTree(bytes);
+    }
+
+    public JsonNode readTree(File file) throws IOException {
+        return objectMapper.readTree(file);
     }
 
 }
