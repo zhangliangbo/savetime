@@ -265,7 +265,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             completableFutureList.add(completableFuture);
 
         }
+
+        System.out.println("等待所有任务开始");
         CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
+        System.out.println("等待所有任务结束");
 
         sw.stop();
         return Pair.of(total.get(), sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
