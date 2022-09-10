@@ -14,6 +14,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -112,6 +114,15 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return getOrCreateRunner(key, schema).batch(sql, args);
     }
 
+    /**
+     * 创建表格SQL
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 创建表格SQL
+     * @throws Exception 异常
+     */
     public String createTableSql(String key, String schema, String table) throws Exception {
         return query(key, schema, "show create table " + table)
                 .get("Create Table").get(0).toString();
@@ -124,18 +135,21 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 .collect(Collectors.toList());
     }
 
-    //备份数据表
+    /**
+     * 备份表格
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 【记录条数，时间ms】
+     * @throws Exception 异常
+     */
     public Pair<Long, Long> backup(String key, String schema, String table) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
 
-        List<String> columns = getColumnNames(key, schema, table);
+        String newTable = createBackupTable(key, schema, table);
+        String sql = insertTableSql(key, schema, newTable);
 
-        String newTable = table + "_" + DateFormatUtils.format(new Date(), "yyyyMMddHHmmss");
-        String createSql = createTableSql(key, schema, table).replace(table, newTable);
-        int create = update(key, schema, createSql);
-        System.out.println("创建表格" + newTable + "=" + create);
-        String sql = "insert into " + newTable + " " + columns.stream().collect(Collectors.joining(",", "(", ")")) +
-                " values " + columns.stream().map(t -> "?").collect(Collectors.joining(",", "(", ")"));
         Long total = 0L;
         long last = 0L;
         while (true) {
@@ -152,6 +166,109 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
         sw.stop();
         return Pair.of(total, sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    public int rename(String key, String schema, String oldTableName, String newTableName) throws Exception {
+        String sql = String.format("rename table %s to %s", oldTableName, newTableName);
+        return update(key, schema, sql);
+    }
+
+    public Map<String, List<Object>> getQueryProcessMoreThan(String key, String schema, int spendSecond) throws Exception {
+        String sql = "select * from information_schema.PROCESSLIST where command = 'Query' and time > ? order by time desc";
+        return query(key, schema, sql, spendSecond);
+    }
+
+    /**
+     * 创建备份表
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 备份表名称
+     * @throws Exception 异常
+     */
+    public String createBackupTable(String key, String schema, String table) throws Exception {
+        String newTable = table + "_" + DateFormatUtils.format(new Date(), "yyyyMMddHHmmss");
+        String createSql = createTableSql(key, schema, table).replace(table, newTable);
+        int create = update(key, schema, createSql);
+        System.out.println("创建表格" + newTable + "=" + create);
+        return newTable;
+    }
+
+    /**
+     * 插入记录SQL
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 插入记录SQL
+     * @throws Exception 异常
+     */
+    public String insertTableSql(String key, String schema, String table) throws Exception {
+        List<String> columns = getColumnNames(key, schema, table);
+        return "insert into " + table + " " + columns.stream().collect(Collectors.joining(",", "(", ")")) +
+                " values " + columns.stream().map(t -> "?").collect(Collectors.joining(",", "(", ")"));
+    }
+
+    /**
+     * 并行备份表格
+     *
+     * @param key      环境
+     * @param schema   数据库
+     * @param table    表
+     * @param parallel 并行度
+     * @return 【记录条数，时间ms】
+     * @throws Exception 异常
+     */
+    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+        String newTable = createBackupTable(key, schema, table);
+        String sql = insertTableSql(key, schema, newTable);
+        long count = Long.parseLong(String.valueOf(query(key, schema, "select count(*) from " + table).get("count(*)").get(0)));
+        System.out.println("总数" + count);
+        int portion = count / parallel > 0 ? parallel : 1;
+        System.out.println("份数" + portion);
+        long part = count / parallel + (count % parallel == 0 ? 0 : 1);
+        System.out.println("每份个数" + part);
+        long[] ids = new long[portion + 1];
+        ids[0] = 0;
+        for (int i = 1; i < portion; i++) {
+            ids[i] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id limit ?,1", part * i - 1).get("id").get(0)));
+        }
+        AtomicLong total = new AtomicLong(0);
+        List<CompletableFuture<Void>> completableFutureList = new LinkedList<>();
+        for (int i = 0; i < ids.length - 1; i++) {
+            long startId = ids[i];
+            long endId = ids[i + 1];
+            System.out.printf("开始任务 %s-%s%n", startId, endId);
+            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        long last = startId;
+                        while (true) {
+                            List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit 10000", last, endId);
+                            if (page.isEmpty()) {
+                                break;
+                            }
+                            Object[][] args = page.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                            int[] r = batchNoRetry(key, schema, sql, args);
+                            long l = total.addAndGet(r.length);
+                            System.out.println(l);
+                            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get("id")));
+                        }
+                    } catch (Exception e) {
+                        System.out.println("backupParallel报错" + e);
+                    }
+                }
+            });
+            completableFutureList.add(completableFuture);
+
+        }
+        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
+
+        sw.stop();
+        return Pair.of(total.get(), sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
     }
 
 }
