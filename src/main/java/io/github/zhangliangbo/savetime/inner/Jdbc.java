@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -220,7 +222,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @return 【记录条数，时间ms】
      * @throws Exception 异常
      */
-    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel) throws Exception {
+    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel, Executor executor) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
         String newTable = createBackupTable(key, schema, table);
         String sql = insertTableSql(key, schema, newTable);
@@ -232,38 +234,60 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         System.out.println("每份个数" + part);
         long[] ids = new long[portion + 1];
         ids[0] = 0;
-        for (int i = 1; i < portion; i++) {
-            ids[i] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id limit ?,1", part * i - 1).get("id").get(0)));
-        }
-        AtomicLong total = new AtomicLong(0);
         List<CompletableFuture<Void>> completableFutureList = new LinkedList<>();
-        for (int i = 0; i < ids.length - 1; i++) {
-            long startId = ids[i];
-            long endId = ids[i + 1];
-            System.out.printf("开始任务 %s-%s%n", startId, endId);
-            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(new Runnable() {
+        for (int i = 1; i < ids.length; i++) {
+            final int fi = i;
+            Runnable runnable = new Runnable() {
                 @Override
                 public void run() {
+                    System.out.printf("查询ID %s-%s %s%n", fi, ids.length, Thread.currentThread().getName());
                     try {
-                        long last = startId;
-                        while (true) {
-                            List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit 10000", last, endId);
-                            if (page.isEmpty()) {
-                                break;
-                            }
-                            Object[][] args = page.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
-                            int[] r = batchNoRetry(key, schema, sql, args);
-                            long l = total.addAndGet(r.length);
-                            System.out.println(l);
-                            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get("id")));
+                        if (fi == ids.length - 1) {
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id desc limit 1").get("id").get(0)));
+                        } else {
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id limit ?,1", part * fi - 1).get("id").get(0)));
                         }
                     } catch (Exception e) {
                         System.out.println("backupParallel报错" + e);
                     }
                 }
-            });
+            };
+            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ? CompletableFuture.runAsync(runnable) :
+                    CompletableFuture.runAsync(runnable, executor);
             completableFutureList.add(completableFuture);
+        }
 
+        System.out.println("等待所有ID开始");
+        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
+        System.out.println("等待所有ID结束");
+
+        AtomicLong total = new AtomicLong(0);
+        completableFutureList.clear();
+        for (int i = 0; i < ids.length - 1; i++) {
+            long startId = ids[i];
+            long endId = ids[i + 1];
+            Runnable runnable = () -> {
+                System.out.printf("开始任务 %s-%s %s%n", startId, endId, Thread.currentThread().getName());
+                try {
+                    long last = startId;
+                    while (true) {
+                        List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit 10000", last, endId);
+                        if (page.isEmpty()) {
+                            break;
+                        }
+                        Object[][] args = page.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                        int[] r = batchNoRetry(key, schema, sql, args);
+                        long l = total.addAndGet(r.length);
+                        System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
+                        last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get("id")));
+                    }
+                } catch (Exception e) {
+                    System.out.println("backupParallel报错" + e);
+                }
+            };
+            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ?
+                    CompletableFuture.runAsync(runnable) : CompletableFuture.runAsync(runnable, executor);
+            completableFutureList.add(completableFuture);
         }
 
         System.out.println("等待所有任务开始");
@@ -272,6 +296,19 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
         sw.stop();
         return Pair.of(total.get(), sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    /**
+     * 移除表格
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 移除表格结果
+     * @throws Exception 异常
+     */
+    public int dropTable(String key, String schema, String table) throws Exception {
+        return update(key, schema, "drop table " + table);
     }
 
 }
