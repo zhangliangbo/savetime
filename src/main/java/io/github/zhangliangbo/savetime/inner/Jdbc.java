@@ -146,7 +146,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @return 【记录条数，时间ms】
      * @throws Exception 异常
      */
-    public Pair<Long, Long> backup(String key, String schema, String table) throws Exception {
+    public Pair<Long, Long> backup(String key, String schema, String table, int batchSize) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
 
         String newTable = createBackupTable(key, schema, table);
@@ -155,7 +155,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         Long total = 0L;
         long last = 0L;
         while (true) {
-            List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? order by id limit 10000", last);
+            List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? order by id limit ?", last, batchSize);
             if (page.isEmpty()) {
                 break;
             }
@@ -222,7 +222,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @return 【记录条数，时间ms】
      * @throws Exception 异常
      */
-    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel, Executor executor) throws Exception {
+    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel, int batchSize, Executor executor) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
         String newTable = createBackupTable(key, schema, table);
         String sql = insertTableSql(key, schema, newTable);
@@ -271,7 +271,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 try {
                     long last = startId;
                     while (true) {
-                        List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit 10000", last, endId);
+                        List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit ?", last, endId, batchSize);
                         if (page.isEmpty()) {
                             break;
                         }
