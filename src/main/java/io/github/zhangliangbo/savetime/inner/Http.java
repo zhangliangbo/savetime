@@ -19,6 +19,7 @@ import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.util.Timeout;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -63,13 +64,13 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return Triple.of(jsonNode, m, r);
     }
 
-    public String queryString(Map<String, Object> map) {
+    public String queryString(Map<String, Object> map) throws UnsupportedEncodingException {
         if (Objects.isNull(map) || map.isEmpty()) {
             return "";
         }
         Map<String, String> copy = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-            copy.put(entry.getKey(), java.net.URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8));
+            copy.put(entry.getKey(), java.net.URLEncoder.encode(entry.getValue().toString(), StandardCharsets.UTF_8.name()));
         }
         return "?" + Joiner.on("&").withKeyValueSeparator("=").join(copy);
     }

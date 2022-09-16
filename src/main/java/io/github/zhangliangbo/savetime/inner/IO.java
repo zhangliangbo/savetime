@@ -160,7 +160,7 @@ public class IO {
 
     public Map<String, Object> toMap(JsonNode jsonNode) throws JsonProcessingException {
         String json = objectMapper.writeValueAsString(jsonNode);
-        return objectMapper.readValue(json, new TypeReference<>() {
+        return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
         });
     }
 
@@ -169,7 +169,7 @@ public class IO {
     }
 
     public Map<String, Object> toMap(File file, boolean filterNull) throws Exception {
-        Map<String, Object> map = objectMapper.readValue(file, new TypeReference<>() {
+        Map<String, Object> map = objectMapper.readValue(file, new TypeReference<Map<String, Object>>() {
         });
         if (!filterNull) {
             return map;

@@ -15,7 +15,7 @@ import java.util.Objects;
  */
 public class RabbitWeb extends Http {
     public JsonNode queueInfo(String key, String virtualHost, String queue) throws Exception {
-        return get(key, "/api/queues/" + URLEncoder.encode(virtualHost, StandardCharsets.UTF_8) + "/" + queue);
+        return get(key, "/api/queues/" + URLEncoder.encode(virtualHost, StandardCharsets.UTF_8.name()) + "/" + queue);
     }
 
     public JsonNode queueInfo(String key, String queue) throws Exception {
@@ -35,7 +35,7 @@ public class RabbitWeb extends Http {
         fullBody.put("routing_key", "#");
         fullBody.put("payload_encoding", "string");
         return post(key,
-                "/api/exchanges/" + URLEncoder.encode(virtualHost, StandardCharsets.UTF_8) + "/" + exchange + "/publish",
+                "/api/exchanges/" + URLEncoder.encode(virtualHost, StandardCharsets.UTF_8.name()) + "/" + exchange + "/publish",
                 null,
                 fullBody);
     }
