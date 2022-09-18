@@ -131,7 +131,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         }
         if (Objects.nonNull(tokenGenerator)) {
             String token = makeToken(key);
-            request.addHeader(HttpHeaders.AUTHORIZATION, token);
+            request.addHeader(tokenGenerator.getTokenHeader(), token);
         }
     }
 

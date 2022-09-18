@@ -8,9 +8,11 @@ import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -145,7 +147,7 @@ public class IO {
     }
 
     /**
-     * 文对象转json字符串
+     * 对象转json字符串
      *
      * @param obj 对象
      * @return json字符串
@@ -158,16 +160,38 @@ public class IO {
         return objectMapper.writeValueAsString(obj);
     }
 
+    /**
+     * JsonNode转map
+     *
+     * @param jsonNode jsonNode
+     * @return map
+     * @throws JsonProcessingException 异常
+     */
     public Map<String, Object> toMap(JsonNode jsonNode) throws JsonProcessingException {
         String json = objectMapper.writeValueAsString(jsonNode);
         return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
         });
     }
 
+    /**
+     * 文件转map
+     *
+     * @param file 文件
+     * @return map
+     * @throws Exception 异常
+     */
     public Map<String, Object> toMap(File file) throws Exception {
         return toMap(file, true);
     }
 
+    /**
+     * 文件转map
+     *
+     * @param file       文件
+     * @param filterNull 是否过滤null
+     * @return map
+     * @throws Exception 异常
+     */
     public Map<String, Object> toMap(File file, boolean filterNull) throws Exception {
         Map<String, Object> map = objectMapper.readValue(file, new TypeReference<Map<String, Object>>() {
         });
@@ -188,6 +212,22 @@ public class IO {
 
     public JsonNode readTree(File file) throws IOException {
         return objectMapper.readTree(file);
+    }
+
+    /**
+     * 对象转json文件
+     *
+     * @param file 文件
+     * @param obj  对象
+     * @throws JsonProcessingException 异常
+     */
+    public void writeJson(File file, Object obj) throws IOException {
+        if (obj instanceof String) {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            IOUtils.write((String) obj, fileOutputStream, StandardCharsets.UTF_8);
+            fileOutputStream.close();
+        }
+        objectMapper.writeValue(file, obj);
     }
 
 }
