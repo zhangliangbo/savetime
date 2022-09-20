@@ -155,8 +155,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
         Long total = 0L;
         long last = 0L;
+        String primary = getPrimaryColumn(key, schema, table);
+        String querySql = String.format("select * from %s where %s>? order by %s limit ?", table, primary, primary);
         while (true) {
-            List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? order by id limit ?", last, batchSize);
+            List<Map<String, Object>> page = queryList(key, schema, querySql, last, batchSize);
             if (page.isEmpty()) {
                 break;
             }
@@ -164,7 +166,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             int[] r = batchNoRetry(key, schema, sql, args);
             total += r.length;
             System.out.println(total);
-            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get("id")));
+            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
         }
 
         sw.stop();
@@ -238,6 +240,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         long[] ids = new long[portion + 1];
         ids[0] = 0;
         List<CompletableFuture<Void>> completableFutureList = new LinkedList<>();
+        String primary = getPrimaryColumn(key, schema, table);
         for (int i = 1; i < ids.length; i++) {
             final int fi = i;
             Runnable runnable = new Runnable() {
@@ -246,9 +249,11 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     System.out.printf("查询ID %s-%s %s%n", fi, ids.length, Thread.currentThread().getName());
                     try {
                         if (fi == ids.length - 1) {
-                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id desc limit 1").get("id").get(0)));
+                            String querySql = String.format("select id from %s order by %s desc limit 1", table, primary);
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql).get(primary).get(0)));
                         } else {
-                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, "select id from " + table + " order by id limit ?,1", part * fi - 1).get("id").get(0)));
+                            String querySql = String.format("select id from %s order by %s limit ?,1", table, primary);
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql, part * fi - 1).get(primary).get(0)));
                         }
                     } catch (Exception e) {
                         System.out.println("backupParallel报错" + e);
@@ -274,7 +279,8 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 try {
                     long last = startId;
                     while (true) {
-                        List<Map<String, Object>> page = queryList(key, schema, "select * from " + table + " where id>? and id<=? order by id limit ?", last, endId, batchSize);
+                        String querySql = String.format("select * from %s where %s>? and %s<=? order by %s limit ?", table, primary, primary, primary);
+                        List<Map<String, Object>> page = queryList(key, schema, querySql, last, endId, batchSize);
                         if (page.isEmpty()) {
                             break;
                         }
@@ -282,7 +288,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                         int[] r = batchNoRetry(key, schema, sql, args);
                         long l = total.addAndGet(r.length);
                         System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
-                        last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get("id")));
+                        last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
                     }
                 } catch (Exception e) {
                     System.out.println("backupParallel报错" + e);
@@ -326,7 +332,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         Map<String, List<Object>> query = query(key, schema, "show columns from " + table);
         List<Object> keyColumn = query.get("Key");
         for (int i = 0; i < keyColumn.size(); i++) {
-            if (String.valueOf(keyColumn.get(0)).toUpperCase().startsWith("PRI")) {
+            if (String.valueOf(keyColumn.get(i)).toUpperCase().startsWith("PRI")) {
                 return String.valueOf(query.get("Field").get(i));
             }
         }
