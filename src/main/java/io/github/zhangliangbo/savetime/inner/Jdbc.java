@@ -249,10 +249,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     System.out.printf("查询ID %s-%s %s%n", fi, ids.length, Thread.currentThread().getName());
                     try {
                         if (fi == ids.length - 1) {
-                            String querySql = String.format("select id from %s order by %s desc limit 1", table, primary);
+                            String querySql = String.format("select %s from %s order by %s desc limit 1", primary, table, primary);
                             ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql).get(primary).get(0)));
                         } else {
-                            String querySql = String.format("select id from %s order by %s limit ?,1", table, primary);
+                            String querySql = String.format("select %s from %s order by %s limit ?,1", primary, table, primary);
                             ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql, part * fi - 1).get(primary).get(0)));
                         }
                     } catch (Exception e) {
