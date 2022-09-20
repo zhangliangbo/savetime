@@ -140,9 +140,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     /**
      * 备份表格
      *
-     * @param key    环境
-     * @param schema 数据库
-     * @param table  表
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表
+     * @param batchSize 批量大小
      * @return 【记录条数，时间ms】
      * @throws Exception 异常
      */
@@ -215,10 +216,12 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     /**
      * 并行备份表格
      *
-     * @param key      环境
-     * @param schema   数据库
-     * @param table    表
-     * @param parallel 并行度
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表
+     * @param parallel  并行度
+     * @param batchSize 批量大小
+     * @param executor  执行器
      * @return 【记录条数，时间ms】
      * @throws Exception 异常
      */

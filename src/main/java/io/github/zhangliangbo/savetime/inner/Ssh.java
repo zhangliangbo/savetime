@@ -48,10 +48,11 @@ public class Ssh extends AbstractConfigurable<Session> {
     }
 
     /**
-     * @param ssh
-     * @param uri
+     * @param ssh ssh
+     * @param uri uri
+     * @param url url
      * @return 本地转发端口
-     * @throws Exception
+     * @throws Exception 异常
      */
     public String forward(JsonNode ssh, URI uri, String url) throws Exception {
         if (Objects.isNull(ssh)) {
