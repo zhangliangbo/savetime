@@ -311,4 +311,23 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return update(key, schema, "drop table " + table);
     }
 
+    /**
+     * 获取主键字段名
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 主键字段名
+     */
+    public String getPrimaryColumn(String key, String schema, String table) throws Exception {
+        Map<String, List<Object>> query = query(key, schema, "show columns from " + table);
+        List<Object> keyColumn = query.get("Key");
+        for (int i = 0; i < keyColumn.size(); i++) {
+            if (String.valueOf(keyColumn.get(0)).toUpperCase().startsWith("PRI")) {
+                return String.valueOf(query.get("Field").get(i));
+            }
+        }
+        return "id";
+    }
+
 }

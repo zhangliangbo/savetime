@@ -15,6 +15,7 @@ public final class ST {
     public static final IO io = new IO();
     public static final RabbitWeb rabbitWeb = new RabbitWeb();
     public static final Mail mail = new Mail();
+    public static final ElasticSearch elasticSearch = new ElasticSearch();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
