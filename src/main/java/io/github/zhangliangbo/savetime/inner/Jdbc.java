@@ -327,6 +327,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param schema 数据库
      * @param table  表
      * @return 主键字段名
+     * @throws Exception 异常
      */
     public String getPrimaryColumn(String key, String schema, String table) throws Exception {
         Map<String, List<Object>> query = query(key, schema, "show columns from " + table);

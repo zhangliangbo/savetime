@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
 import org.apache.commons.collections4.CollectionUtils;
@@ -161,6 +162,20 @@ public class IO {
     }
 
     /**
+     * 对象转JsonNode
+     *
+     * @param obj 对象
+     * @return json字符串
+     * @throws JsonProcessingException 异常
+     */
+    public JsonNode toJsonNode(Object obj) throws JsonProcessingException {
+        if (obj instanceof String) {
+            return new TextNode((String) obj);
+        }
+        return objectMapper.readTree(toJson(obj));
+    }
+
+    /**
      * JsonNode转map
      *
      * @param jsonNode jsonNode
@@ -214,20 +229,35 @@ public class IO {
         return objectMapper.readTree(file);
     }
 
+    public JsonNode readTree(String str) throws IOException {
+        return objectMapper.readTree(str);
+    }
+
     /**
      * 对象转json文件
      *
      * @param file 文件
      * @param obj  对象
-     * @throws JsonProcessingException 异常
+     * @throws IOException 异常
      */
     public void writeJson(File file, Object obj) throws IOException {
         if (obj instanceof String) {
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            IOUtils.write((String) obj, fileOutputStream, StandardCharsets.UTF_8);
-            fileOutputStream.close();
+            writeString(file, (String) obj);
         }
         objectMapper.writeValue(file, obj);
+    }
+
+    /**
+     * 对象转json文件
+     *
+     * @param file   文件
+     * @param string 字符串
+     * @throws IOException 异常
+     */
+    public void writeString(File file, String string) throws IOException {
+        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        IOUtils.write(string, fileOutputStream, StandardCharsets.UTF_8);
+        fileOutputStream.close();
     }
 
 }
