@@ -1,5 +1,6 @@
 package io.github.zhangliangbo.savetime.inner;
 
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -10,17 +11,16 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.*;
 import org.elasticsearch.client.core.MainResponse;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetIndexResponse;
+import org.elasticsearch.client.indices.*;
 import org.elasticsearch.cluster.health.ClusterIndexHealth;
 import org.elasticsearch.cluster.health.ClusterShardHealth;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
@@ -152,6 +152,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      *
      * @param key   环境
      * @param index 索引
+     * @param alias 别名
      * @return 应答
      * @throws Exception 异常
      */
@@ -162,8 +163,10 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
     /**
      * 创建索引
      *
-     * @param key   环境
-     * @param index 索引
+     * @param key      环境
+     * @param index    索引
+     * @param alias    别名
+     * @param mappings 映射
      * @return 应答
      * @throws Exception 异常
      */
@@ -311,6 +314,132 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         objectNode.set("indices", indicesNode);
 
         return objectNode;
+    }
+
+    /**
+     * 字段映射信息
+     *
+     * @param key     环境
+     * @param indices 索引
+     * @return 字段映射
+     * @throws Exception 异常
+     */
+    public JsonNode mapping(String key, String... indices) throws Exception {
+        GetMappingsRequest request = new GetMappingsRequest().indices(indices);
+        GetMappingsResponse response = getOrCreate(key).indices().getMapping(request, RequestOptions.DEFAULT);
+        ObjectNode jsonNode = new ObjectNode(JsonNodeFactory.instance);
+        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+            jsonNode.set(entry.getKey(), ST.io.toJsonNode(entry.getValue().getSourceAsMap()));
+        }
+        return jsonNode;
+    }
+
+    /**
+     * 设置信息
+     *
+     * @param key     环境
+     * @param indices 索引
+     * @return 设置
+     * @throws Exception 异常
+     */
+    public JsonNode setting(String key, String... indices) throws Exception {
+        GetSettingsRequest request = new GetSettingsRequest().indices(indices);
+        GetSettingsResponse response = getOrCreate(key).indices().getSettings(request, RequestOptions.DEFAULT);
+
+        ObjectNode jsonNode = new ObjectNode(JsonNodeFactory.instance);
+        for (ObjectObjectCursor<String, Settings> entry : response.getIndexToSettings()) {
+            jsonNode.set(entry.key, ST.io.readTree(entry.value.toString()));
+        }
+        return jsonNode;
+    }
+
+    /**
+     * 别名
+     *
+     * @param key   环境
+     * @param alias 别名
+     * @return 别名
+     * @throws Exception 异常
+     */
+    public JsonNode alias(String key, String... alias) throws Exception {
+        GetAliasesRequest request = new GetAliasesRequest(alias);
+        GetAliasesResponse response = getOrCreate(key).indices().getAlias(request, RequestOptions.DEFAULT);
+
+        ObjectNode jsonNode = new ObjectNode(JsonNodeFactory.instance);
+        for (Map.Entry<String, Set<AliasMetadata>> entry : response.getAliases().entrySet()) {
+            Set<String> set = entry.getValue().stream().map(AliasMetadata::getAlias).collect(Collectors.toSet());
+            jsonNode.set(entry.getKey(), ST.io.toJsonNode(set));
+        }
+
+        return jsonNode;
+    }
+
+    /**
+     * 别名
+     *
+     * @param key   环境
+     * @param index 索引
+     * @param alia  别名
+     * @return 别名
+     * @throws Exception 异常
+     */
+    public boolean aliasAdd(String key, String index, String alia) throws Exception {
+        IndicesAliasesRequest request = new IndicesAliasesRequest();
+        IndicesAliasesRequest.AliasActions aliasAction = new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
+                .index(index).alias(alia);
+        request.addAliasAction(aliasAction);
+        AcknowledgedResponse response = getOrCreate(key).indices().updateAliases(request, RequestOptions.DEFAULT);
+        return response.isAcknowledged();
+    }
+
+    /**
+     * 别名是否存在
+     *
+     * @param key   环境
+     * @param alias 别名
+     * @return 是否存在
+     * @throws Exception 异常
+     */
+    public boolean aliasExist(String key, String... alias) throws Exception {
+        GetAliasesRequest request = new GetAliasesRequest(alias);
+        return getOrCreate(key).indices().existsAlias(request, RequestOptions.DEFAULT);
+    }
+
+    /**
+     * 删除别名
+     *
+     * @param key   环境
+     * @param index 索引
+     * @param alia  别名
+     * @return 是否成功
+     * @throws Exception 异常
+     */
+    public boolean aliasDelete(String key, String index, String alia) throws Exception {
+        DeleteAliasRequest request = new DeleteAliasRequest(index, alia);
+        org.elasticsearch.client.core.AcknowledgedResponse response = getOrCreate(key).indices().deleteAlias(request, RequestOptions.DEFAULT);
+        return response.isAcknowledged();
+    }
+
+    /**
+     * 移动别名
+     *
+     * @param key       环境
+     * @param fromIndex 开始索引
+     * @param toIndex   结束索引
+     * @param alia      别名
+     * @return 是否成功
+     * @throws Exception 异常
+     */
+    public boolean aliasMove(String key, String fromIndex, String toIndex, String alia) throws Exception {
+        IndicesAliasesRequest request = new IndicesAliasesRequest();
+        IndicesAliasesRequest.AliasActions aliasAction1 = new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.REMOVE)
+                .index(fromIndex).alias(alia);
+        request.addAliasAction(aliasAction1);
+        IndicesAliasesRequest.AliasActions aliasAction2 = new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
+                .index(toIndex).alias(alia);
+        request.addAliasAction(aliasAction2);
+        AcknowledgedResponse response = getOrCreate(key).indices().updateAliases(request, RequestOptions.DEFAULT);
+        return response.isAcknowledged();
     }
 
 }
