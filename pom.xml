@@ -121,6 +121,11 @@
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
       <version>7.11.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.alibaba</groupId>
+      <artifactId>easyexcel</artifactId>
+      <version>3.1.1</version>
+    </dependency>
   </dependencies>
 
   <distributionManagement>

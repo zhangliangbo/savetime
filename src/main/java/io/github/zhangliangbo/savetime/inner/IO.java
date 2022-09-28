@@ -1,5 +1,10 @@
 package io.github.zhangliangbo.savetime.inner;
 
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelReader;
+import com.alibaba.excel.context.AnalysisContext;
+import com.alibaba.excel.read.listener.ReadListener;
+import com.alibaba.excel.read.metadata.ReadSheet;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,20 +12,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.checkerframework.checker.units.qual.A;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 /**
@@ -271,6 +276,72 @@ public class IO {
      */
     public BufferedImage readImage(URL url) throws IOException {
         return ImageIO.read(url);
+    }
+
+    /**
+     * 读取图片
+     *
+     * @param file 图片文件
+     * @return 图片数据
+     * @throws IOException 异常
+     */
+    public BufferedImage readImage(File file) throws IOException {
+        return ImageIO.read(file);
+    }
+
+    /**
+     * 文件追加内容
+     *
+     * @param file   文件
+     * @param string 内容
+     * @throws IOException 异常
+     */
+    public void appendFile(File file, String string) throws IOException {
+        FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+        IOUtils.write(string, fileOutputStream, StandardCharsets.UTF_8);
+        fileOutputStream.close();
+    }
+
+    public Pair<Long, Long> excelToCsv(File csv, File xls, int... sheetAndHead) throws IOException {
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        AtomicLong line = new AtomicLong(0L);
+
+        CSVWriter writer = new CSVWriter(new FileWriter(csv));
+        ReadListener<Map<Integer, String>> listener = new ReadListener<Map<Integer, String>>() {
+            @Override
+            public void invoke(Map<Integer, String> o, AnalysisContext analysisContext) {
+                writer.writeNext(o.values().toArray(new String[0]));
+                line.incrementAndGet();
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+                System.out.println("after all");
+            }
+        };
+
+        if (sheetAndHead.length % 2 != 0) {
+            throw new IllegalArgumentException("sheetAndHead数组个数必须是2的倍数");
+        }
+        if (sheetAndHead.length == 0) {
+            ExcelReader excelReader = EasyExcel.read(xls, listener).build();
+            excelReader.readAll();
+            excelReader.close();
+        } else {
+            ExcelReader excelReader = EasyExcel.read(xls).build();
+            List<ReadSheet> readSheetList = new LinkedList<>();
+            for (int i = 0; i < sheetAndHead.length; i += 2) {
+                ReadSheet readSheet = EasyExcel.readSheet(sheetAndHead[i]).headRowNumber(sheetAndHead[i + 1]).registerReadListener(listener).build();
+                readSheetList.add(readSheet);
+            }
+            excelReader.read(readSheetList);
+            excelReader.close();
+        }
+
+        writer.close();
+
+        stopwatch.stop();
+        return Pair.of(line.get(), stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
     }
 
 }
