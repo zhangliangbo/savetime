@@ -12,6 +12,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -258,6 +260,17 @@ public class IO {
         FileOutputStream fileOutputStream = new FileOutputStream(file);
         IOUtils.write(string, fileOutputStream, StandardCharsets.UTF_8);
         fileOutputStream.close();
+    }
+
+    /**
+     * 读取图片
+     *
+     * @param url 图片地址
+     * @return 图片数据
+     * @throws IOException 异常
+     */
+    public BufferedImage readImage(URL url) throws IOException {
+        return ImageIO.read(url);
     }
 
 }
