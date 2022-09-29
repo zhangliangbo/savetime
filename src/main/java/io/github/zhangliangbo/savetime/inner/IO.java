@@ -3,6 +3,9 @@ package io.github.zhangliangbo.savetime.inner;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.context.AnalysisContext;
+import com.alibaba.excel.event.AnalysisEventListener;
+import com.alibaba.excel.metadata.Cell;
+import com.alibaba.excel.metadata.data.ReadCellData;
 import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -302,22 +305,57 @@ public class IO {
         fileOutputStream.close();
     }
 
-    public Pair<Long, Long> excelToCsv(File csv, File xls, int... sheetAndHead) throws IOException {
+    /**
+     * excel转csv
+     *
+     * @param csv          csv文件
+     * @param batch        批量复制大小
+     * @param excel        excel文件
+     * @param sheetAndHead 表格编号，表头数目，表格编号，表头数目，...
+     * @return 【总数,时间ms】
+     * @throws IOException 异常
+     */
+    public Pair<Long, Long> excelToCsv(File csv, int batch, File excel, int... sheetAndHead) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
         AtomicLong line = new AtomicLong(0L);
 
         CSVWriter writer = new CSVWriter(new FileWriter(csv));
-        ReadListener<Map<Integer, String>> listener = new ReadListener<Map<Integer, String>>() {
+
+        List<String[]> batchList = new LinkedList<>();
+
+        AnalysisEventListener<Map<Integer, String>> listener = new AnalysisEventListener<Map<Integer, String>>() {
+
             @Override
-            public void invoke(Map<Integer, String> o, AnalysisContext analysisContext) {
-                writer.writeNext(o.values().toArray(new String[0]));
-                long l = line.incrementAndGet();
-                System.out.println(l);
+            public void invokeHeadMap(Map<Integer, String> headMap, AnalysisContext context) {
+                System.out.println(headMap);
+                String[] headers = headMap.values().toArray(new String[0]);
+                writer.writeNext(headers);
+                long count = line.incrementAndGet();
+                System.out.printf("s %s head %s%n", context.readSheetHolder().getSheetNo(), count);
             }
 
             @Override
-            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
-                System.out.println("after all");
+            public void invoke(Map<Integer, String> o, AnalysisContext context) {
+                String[] record = o.values().toArray(new String[0]);
+                batchList.add(record);
+                long count = line.incrementAndGet();
+                if (batchList.size() >= batch) {
+                    writer.writeAll(batchList);
+                    writer.flushQuietly();
+                    batchList.clear();
+                    System.out.printf("s %s record %s%n", context.readSheetHolder().getSheetNo(), count);
+                }
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext context) {
+                if (batchList.size() > 0) {
+                    writer.writeAll(batchList);
+                    writer.flushQuietly();
+                    batchList.clear();
+                    System.out.printf("s %s record %s%n", context.readSheetHolder().getSheetNo(), line.get());
+                }
+                System.out.printf("s %s end%n", context.readSheetHolder().getSheetNo());
             }
         };
 
@@ -325,11 +363,11 @@ public class IO {
             throw new IllegalArgumentException("sheetAndHead数组个数必须是2的倍数");
         }
         if (sheetAndHead.length == 0) {
-            ExcelReader excelReader = EasyExcel.read(xls, listener).build();
+            ExcelReader excelReader = EasyExcel.read(excel, listener).build();
             excelReader.readAll();
             excelReader.close();
         } else {
-            ExcelReader excelReader = EasyExcel.read(xls).build();
+            ExcelReader excelReader = EasyExcel.read(excel).build();
             List<ReadSheet> readSheetList = new LinkedList<>();
             for (int i = 0; i < sheetAndHead.length; i += 2) {
                 ReadSheet readSheet = EasyExcel.readSheet(sheetAndHead[i]).headRowNumber(sheetAndHead[i + 1]).registerReadListener(listener).build();
