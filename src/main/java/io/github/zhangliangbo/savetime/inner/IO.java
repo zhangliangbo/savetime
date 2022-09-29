@@ -311,7 +311,8 @@ public class IO {
             @Override
             public void invoke(Map<Integer, String> o, AnalysisContext analysisContext) {
                 writer.writeNext(o.values().toArray(new String[0]));
-                line.incrementAndGet();
+                long l = line.incrementAndGet();
+                System.out.println(l);
             }
 
             @Override
