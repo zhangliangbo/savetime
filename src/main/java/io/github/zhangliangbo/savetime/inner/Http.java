@@ -17,6 +17,7 @@ import org.apache.hc.client5.http.fluent.Response;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.core5.util.Timeout;
 
@@ -135,6 +136,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
             if (!(jsonNode instanceof ObjectNode)) {
                 return;
             }
+            List<NameValuePair> content = new LinkedList<>();
             ObjectNode on = (ObjectNode) jsonNode;
             Iterator<Map.Entry<String, JsonNode>> iterator = on.fields();
             while (iterator.hasNext()) {
@@ -142,8 +144,9 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
                 if (!next.getValue().isValueNode()) {
                     continue;
                 }
-                request.bodyForm(new BasicNameValuePair(next.getKey(), next.getValue().textValue()));
+                content.add(new BasicNameValuePair(next.getKey(), next.getValue().textValue()));
             }
+            request.bodyForm(content);
         }
     }
 
