@@ -15,7 +15,7 @@ public interface TokenGenerator {
      * @param env 环境信息（用户名，密码等）
      * @return 【token,有效时长s】
      */
-    Pair<String, Long> getToken(JsonNode env);
+    Pair<String, Long> getToken(JsonNode env) throws Exception;
 
     /**
      * @return token的请求头
