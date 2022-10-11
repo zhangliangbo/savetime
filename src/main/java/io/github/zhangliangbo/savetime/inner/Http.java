@@ -1,5 +1,6 @@
 package io.github.zhangliangbo.savetime.inner;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,16 +17,14 @@ import org.apache.hc.client5.http.fluent.Response;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.core5.util.Timeout;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * @author zhangliangbo
@@ -123,6 +122,31 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return get(key, url, null);
     }
 
+    private void processBody(Request request, Object body, Map<String, String> header) throws JsonProcessingException {
+        if (Objects.isNull(body)) {
+            return;
+        }
+        if (header == null || !header.containsKey(HttpHeaders.CONTENT_TYPE) || Objects.equals(header.get(HttpHeaders.CONTENT_TYPE), ContentType.APPLICATION_JSON.toString())) {
+            request.bodyString(ST.io.toJson(body), null);
+            return;
+        }
+        if (Objects.equals(header.get(HttpHeaders.CONTENT_TYPE), ContentType.APPLICATION_FORM_URLENCODED.toString())) {
+            JsonNode jsonNode = ST.io.toJsonNode(body);
+            if (!(jsonNode instanceof ObjectNode)) {
+                return;
+            }
+            ObjectNode on = (ObjectNode) jsonNode;
+            Iterator<Map.Entry<String, JsonNode>> iterator = on.fields();
+            while (iterator.hasNext()) {
+                Map.Entry<String, JsonNode> next = iterator.next();
+                if (!next.getValue().isValueNode()) {
+                    continue;
+                }
+                request.bodyForm(new BasicNameValuePair(next.getKey(), next.getValue().textValue()));
+            }
+        }
+    }
+
     private void processHeader(String key, Request request, Map<String, String> header) throws Exception {
         if (Objects.nonNull(header)) {
             for (Map.Entry<String, String> entry : header.entrySet()) {
@@ -139,10 +163,8 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode post(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.post(uri);
-        if (Objects.nonNull(body)) {
-            request.bodyString(ST.io.toJson(body), null);
-        }
         processHeader(key, request, header);
+        processBody(request, body, header);
         return send(request);
     }
 
@@ -163,14 +185,12 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
         System.out.println(uri);
         Request request = Request.post(uri);
-        if (Objects.nonNull(body)) {
-            request.bodyString(ST.io.toJson(body), null);
-        }
         if (Objects.nonNull(header)) {
             for (Map.Entry<String, String> entry : header.entrySet()) {
                 request.addHeader(entry.getKey(), entry.getValue());
             }
         }
+        processBody(request, body, header);
         return send(request);
     }
 
@@ -204,10 +224,8 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode put(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.put(uri);
-        if (Objects.nonNull(body)) {
-            request.bodyString(ST.io.toJson(body), null);
-        }
         processHeader(key, request, header);
+        processBody(request, body, header);
         return send(request);
     }
 
