@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.zhangliangbo.savetime.ST;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -26,6 +28,7 @@ import org.elasticsearch.cluster.health.ClusterShardHealth;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentType;
 
 import java.io.IOException;
 import java.net.URI;
@@ -135,6 +138,30 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         return objectNode;
     }
 
+    private JsonNode indexCreate(RestHighLevelClient client, CreateIndexRequest request) throws IOException {
+        CreateIndexResponse response = client.indices().create(request, RequestOptions.DEFAULT);
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("acknowledged", response.isAcknowledged());
+        objectNode.put("shardsAcknowledged", response.isShardsAcknowledged());
+        objectNode.put("index", response.index());
+        return objectNode;
+    }
+
+    /**
+     * 创建索引
+     *
+     * @param key    环境
+     * @param index  索引
+     * @param source 配置源
+     * @return 应答
+     * @throws Exception 异常
+     */
+    public JsonNode indexCreate(String key, String index, String source) throws Exception {
+        CreateIndexRequest request = new CreateIndexRequest(index);
+        request.source(source, XContentType.JSON);
+        return indexCreate(getOrCreate(key), request);
+    }
+
     /**
      * 创建索引
      *
@@ -144,7 +171,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @throws Exception 异常
      */
     public JsonNode indexCreate(String key, String index) throws Exception {
-        return indexCreate(key, index, null);
+        return indexCreate(key, index, (List<String>) null);
     }
 
     /**
@@ -156,7 +183,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, Map<String, String> alias) throws Exception {
+    public JsonNode indexCreate(String key, String index, List<String> alias) throws Exception {
         return indexCreate(key, index, alias, null);
     }
 
@@ -170,7 +197,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, Map<String, String> alias, Map<String, Object> mappings) throws Exception {
+    public JsonNode indexCreate(String key, String index, List<String> alias, Map<String, Object> mappings) throws Exception {
         Map<String, Object> settings = new LinkedHashMap<>();
         JsonNode jsonNode = clusterHealth(key);
         int numberOfDataNodes = jsonNode.get("numberOfDataNodes").asInt();
@@ -190,10 +217,14 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, Map<String, String> alias, Map<String, Object> mappings, Map<String, Object> settings) throws Exception {
+    public JsonNode indexCreate(String key, String index, List<String> alias, Map<String, Object> mappings, Map<String, Object> settings) throws Exception {
         CreateIndexRequest request = new CreateIndexRequest(index);
-        if (Objects.nonNull(alias)) {
-            request.aliases(alias);
+        if (CollectionUtils.isNotEmpty(alias)) {
+            List<Alias> aliasList = new LinkedList<>();
+            for (String a : alias) {
+                aliasList.add(new Alias(a));
+            }
+            request.aliases(aliasList);
         }
         if (Objects.nonNull(mappings)) {
             request.mapping(mappings);
@@ -201,12 +232,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         if (Objects.nonNull(settings)) {
             request.settings(settings);
         }
-        CreateIndexResponse response = getOrCreate(key).indices().create(request, RequestOptions.DEFAULT);
-        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
-        objectNode.put("acknowledged", response.isAcknowledged());
-        objectNode.put("shardsAcknowledged", response.isShardsAcknowledged());
-        objectNode.put("index", response.index());
-        return objectNode;
+        return indexCreate(getOrCreate(key), request);
     }
 
     /**
