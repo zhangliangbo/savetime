@@ -115,7 +115,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode get(String key, String url, Map<String, Object> query) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
         return get(key, url, query, header);
     }
 
@@ -172,7 +172,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode post(String key, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
         return post(key, url, query, body, header);
     }
 
@@ -198,7 +198,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
         return postToken(env, url, query, body, header);
     }
 
@@ -233,7 +233,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode put(String key, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
         return put(key, url, query, body, header);
     }
 
@@ -254,7 +254,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode delete(String key, String url, Map<String, Object> query) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
         return delete(key, url, query, header);
     }
 
