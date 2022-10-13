@@ -2,6 +2,7 @@ package io.github.zhangliangbo.savetime.inner;
 
 import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.zhangliangbo.savetime.ST;
@@ -113,27 +114,25 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         GetIndexResponse response = getOrCreate(key).indices().get(request, RequestOptions.DEFAULT);
         ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
 
-        ObjectNode settingNode = new ObjectNode(JsonNodeFactory.instance);
-        for (Map.Entry<String, Settings> entry : response.getSettings().entrySet()) {
-            settingNode.set(entry.getKey(), ST.io.readTree(entry.getValue().toString()));
+        for (String index : response.getIndices()) {
+            ObjectNode indexNode = new ObjectNode(JsonNodeFactory.instance);
+
+            Settings settings = response.getSettings().get(index);
+            indexNode.set("settings", ST.io.readTree(settings.toString()));
+
+            MappingMetadata mapping = response.getMappings().get(index);
+            indexNode.set("mappings", ST.io.readTree(mapping.source().toString()));
+
+            List<AliasMetadata> aliases = response.getAliases().get(index);
+
+            ObjectNode aliasNode = new ObjectNode(JsonNodeFactory.instance);
+            for (AliasMetadata alias : aliases) {
+                aliasNode.set(alias.alias(), new ObjectNode(JsonNodeFactory.instance));
+            }
+            indexNode.set("aliases", aliasNode);
+
+            objectNode.set(index, indexNode);
         }
-        objectNode.set("settings", settingNode);
-
-
-        ObjectNode mappingNode = new ObjectNode(JsonNodeFactory.instance);
-        for (Map.Entry<String, MappingMetadata> entry : response.getMappings().entrySet()) {
-            mappingNode.set(entry.getKey(), ST.io.readTree(entry.getValue().source().toString()));
-        }
-        objectNode.set("mappings", mappingNode);
-
-        ObjectNode aliasNode = new ObjectNode(JsonNodeFactory.instance);
-        for (Map.Entry<String, List<AliasMetadata>> entry : response.getAliases().entrySet()) {
-            List<String> aliases = entry.getValue().stream().map(AliasMetadata::alias).collect(Collectors.toList());
-            aliasNode.set(entry.getKey(), ST.io.toJsonNode(aliases));
-        }
-        objectNode.set("aliases", aliasNode);
-
-        objectNode.set("indices", ST.io.toJsonNode(response.getIndices()));
 
         return objectNode;
     }
@@ -157,9 +156,11 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @throws Exception 异常
      */
     public JsonNode indexCreate(String key, String index, String source) throws Exception {
-        CreateIndexRequest request = new CreateIndexRequest(index);
-        request.source(source, XContentType.JSON);
-        return indexCreate(getOrCreate(key), request);
+        Map<String, Object> map = ST.io.toMap(source);
+        return indexCreate(key, index,
+                (Map<String, Object>) map.get("aliases"),
+                (Map<String, Object>) map.get("mappings"),
+                (Map<String, Object>) map.get("settings"));
     }
 
     /**
@@ -171,7 +172,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @throws Exception 异常
      */
     public JsonNode indexCreate(String key, String index) throws Exception {
-        return indexCreate(key, index, (List<String>) null);
+        return indexCreate(key, index, (Map<String, Object>) null);
     }
 
     /**
@@ -183,7 +184,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, List<String> alias) throws Exception {
+    public JsonNode indexCreate(String key, String index, Map<String, Object> alias) throws Exception {
         return indexCreate(key, index, alias, null);
     }
 
@@ -197,7 +198,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, List<String> alias, Map<String, Object> mappings) throws Exception {
+    public JsonNode indexCreate(String key, String index, Map<String, Object> alias, Map<String, Object> mappings) throws Exception {
         Map<String, Object> settings = new LinkedHashMap<>();
         JsonNode jsonNode = clusterHealth(key);
         int numberOfDataNodes = jsonNode.get("numberOfDataNodes").asInt();
@@ -217,19 +218,20 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode indexCreate(String key, String index, List<String> alias, Map<String, Object> mappings, Map<String, Object> settings) throws Exception {
+    public JsonNode indexCreate(String key, String index, Map<String, Object> alias, Map<String, Object> mappings, Map<String, Object> settings) throws Exception {
         CreateIndexRequest request = new CreateIndexRequest(index);
-        if (CollectionUtils.isNotEmpty(alias)) {
-            List<Alias> aliasList = new LinkedList<>();
-            for (String a : alias) {
-                aliasList.add(new Alias(a));
-            }
-            request.aliases(aliasList);
+        if (Objects.nonNull(alias)) {
+            request.aliases(alias);
         }
         if (Objects.nonNull(mappings)) {
             request.mapping(mappings);
         }
         if (Objects.nonNull(settings)) {
+            settings.remove("index.creation_date");
+            settings.remove("index.provided_name");
+            settings.remove("index.routing.allocation.include._tier_preference");
+            settings.remove("index.uuid");
+            settings.remove("index.version.created");
             request.settings(settings);
         }
         return indexCreate(getOrCreate(key), request);

@@ -186,6 +186,18 @@ public class IO {
     }
 
     /**
+     * json转map
+     *
+     * @param json json
+     * @return map
+     * @throws JsonProcessingException 异常
+     */
+    public Map<String, Object> toMap(String json) throws JsonProcessingException {
+        return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
+    }
+
+    /**
      * JsonNode转map
      *
      * @param jsonNode jsonNode
@@ -194,8 +206,7 @@ public class IO {
      */
     public Map<String, Object> toMap(JsonNode jsonNode) throws JsonProcessingException {
         String json = objectMapper.writeValueAsString(jsonNode);
-        return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
-        });
+        return toMap(json);
     }
 
     /**
