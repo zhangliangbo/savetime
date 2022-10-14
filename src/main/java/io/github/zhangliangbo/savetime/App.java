@@ -1,6 +1,7 @@
 package io.github.zhangliangbo.savetime;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.hc.core5.http.ContentType;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +12,6 @@ import java.io.IOException;
  */
 public class App {
     public static void main(String[] args) throws Exception {
-
+        System.out.println(ContentType.create("application/json"));
     }
 }

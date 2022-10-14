@@ -127,11 +127,15 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         if (Objects.isNull(body)) {
             return;
         }
-        if (header == null || !header.containsKey(HttpHeaders.CONTENT_TYPE) || Objects.equals(header.get(HttpHeaders.CONTENT_TYPE), ContentType.APPLICATION_JSON.getMimeType())) {
+        if (header == null || !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
             request.bodyString(ST.io.toJson(body), null);
             return;
         }
-        if (Objects.equals(header.get(HttpHeaders.CONTENT_TYPE), ContentType.APPLICATION_FORM_URLENCODED.getMimeType())) {
+        ContentType contentType = ContentType.create(header.get(HttpHeaders.CONTENT_TYPE));
+        if (ContentType.APPLICATION_JSON.getMimeType().equals(contentType.getMimeType())) {
+            request.bodyString(ST.io.toJson(body), null);
+        }
+        if (ContentType.APPLICATION_FORM_URLENCODED.getMimeType().equals(contentType.getMimeType())) {
             JsonNode jsonNode = ST.io.toJsonNode(body);
             if (!(jsonNode instanceof ObjectNode)) {
                 return;
