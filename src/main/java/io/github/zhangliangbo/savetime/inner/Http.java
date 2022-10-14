@@ -134,6 +134,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         ContentType contentType = ContentType.create(header.get(HttpHeaders.CONTENT_TYPE));
         if (ContentType.APPLICATION_JSON.getMimeType().equals(contentType.getMimeType())) {
             request.bodyString(ST.io.toJson(body), null);
+            return;
         }
         if (ContentType.APPLICATION_FORM_URLENCODED.getMimeType().equals(contentType.getMimeType())) {
             JsonNode jsonNode = ST.io.toJsonNode(body);
