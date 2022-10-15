@@ -17,6 +17,7 @@ public final class ST {
     public static final Mail mail = new Mail();
     public static final ElasticSearch elasticSearch = new ElasticSearch();
     public static final StCollection collection = new StCollection();
+    public static final Nacos nacos = new Nacos();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
