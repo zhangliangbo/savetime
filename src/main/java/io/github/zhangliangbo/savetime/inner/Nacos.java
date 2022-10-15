@@ -1,8 +1,12 @@
 package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -69,10 +73,18 @@ public class Nacos extends Http {
         return updateConfig(key, namespace, dataId, "DEFAULT_GROUP", content);
     }
 
-    public JsonNode updateConfig(String key, String namespace, File file) throws Exception {
-        String dataId = FilenameUtils.getName(file.getAbsolutePath());
-        String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
-        return updateConfig(key, namespace, dataId, content);
+    public JsonNode updateConfig(String key, String namespace, File... files) throws Exception {
+        if (ArrayUtils.isEmpty(files)) {
+            throw new IllegalArgumentException("files不能为空");
+        }
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        for (File file : files) {
+            String dataId = FilenameUtils.getName(file.getAbsolutePath());
+            String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+            JsonNode jsonNode = updateConfig(key, namespace, dataId, content);
+            objectNode.set(dataId, jsonNode);
+        }
+        return objectNode;
     }
 
 }
