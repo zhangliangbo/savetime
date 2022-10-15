@@ -12,6 +12,6 @@ import java.io.IOException;
  */
 public class App {
     public static void main(String[] args) throws Exception {
-        System.out.println(ContentType.create("application/json"));
+        System.out.println(ST.lucene.analyzer());
     }
 }
