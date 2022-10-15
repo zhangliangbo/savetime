@@ -2,8 +2,8 @@ package io.github.zhangliangbo.savetime.inner;
 
 /**
  * @author zhangliangbo
- * @since 2022/10/13
+ * @since 2022-10-15
  */
-public class Nacos extends Http {
+public class Netty {
 
 }
