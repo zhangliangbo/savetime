@@ -66,6 +66,8 @@ public class Nacos extends Http {
         query.put("dataId", Optional.ofNullable(dataId).orElse(StringUtils.EMPTY));
         query.put("group", Optional.ofNullable(group).orElse(StringUtils.EMPTY));
         query.put("content", content);
+        JsonNode config = config(key, namespace, dataId, group);
+        query.put("type", config.get("type").asText());
         return post(key, "/nacos/v1/cs/configs", query);
     }
 

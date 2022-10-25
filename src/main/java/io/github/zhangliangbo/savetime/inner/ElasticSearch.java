@@ -20,6 +20,7 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.client.core.MainResponse;
@@ -467,6 +468,21 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
                 .index(toIndex).alias(alia);
         request.addAliasAction(aliasAction2);
         AcknowledgedResponse response = getOrCreate(key).indices().updateAliases(request, RequestOptions.DEFAULT);
+        return response.isAcknowledged();
+    }
+
+    /**
+     * 更新设置
+     *
+     * @param key      环境
+     * @param index    索引
+     * @param settings 设置
+     * @return 是否成功
+     * @throws Exception 异常
+     */
+    public boolean settingUpdate(String key, String index, Map<String, Object> settings) throws Exception {
+        UpdateSettingsRequest request = new UpdateSettingsRequest(index).settings(settings);
+        AcknowledgedResponse response = getOrCreate(key).indices().putSettings(request, RequestOptions.DEFAULT);
         return response.isAcknowledged();
     }
 
