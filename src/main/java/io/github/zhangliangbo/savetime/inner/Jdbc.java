@@ -340,4 +340,16 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return "id";
     }
 
+    /**
+     * 查询全局变量
+     *
+     * @param key      环境
+     * @param schema   数据库
+     * @param variable 变量
+     * @return 变量信息
+     */
+    public Map<String, List<Object>> showGlobalVariable(String key, String schema, String variable) throws Exception {
+        return query(key, schema, String.format("show global variables like '%s'", "%" + variable + "%"));
+    }
+
 }
