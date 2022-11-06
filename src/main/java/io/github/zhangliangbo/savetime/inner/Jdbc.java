@@ -10,9 +10,11 @@ import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -144,10 +146,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param schema    数据库
      * @param table     表
      * @param batchSize 批量大小
-     * @return 【记录条数，时间ms】
+     * @return 【记录条数，耗费时间，备份表名称】
      * @throws Exception 异常
      */
-    public Pair<Long, Long> backup(String key, String schema, String table, int batchSize) throws Exception {
+    public Triple<Long, Duration, String> backup(String key, String schema, String table, int batchSize) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
 
         String newTable = createBackupTable(key, schema, table);
@@ -170,7 +172,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         }
 
         sw.stop();
-        return Pair.of(total, sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+        return Triple.of(total, sw.elapsed(), newTable);
     }
 
     public int rename(String key, String schema, String oldTableName, String newTableName) throws Exception {
@@ -224,10 +226,10 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param parallel  并行度
      * @param batchSize 批量大小
      * @param executor  执行器
-     * @return 【记录条数，时间ms】
+     * @return 【记录条数，耗费时间，备份表名称】
      * @throws Exception 异常
      */
-    public Pair<Long, Long> backupParallel(String key, String schema, String table, int parallel, int batchSize, Executor executor) throws Exception {
+    public Triple<Long, Duration, String> backupParallel(String key, String schema, String table, int parallel, int batchSize, Executor executor) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
         String newTable = createBackupTable(key, schema, table);
         String sql = insertTableSql(key, schema, newTable);
@@ -304,7 +306,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         System.out.println("等待所有任务结束");
 
         sw.stop();
-        return Pair.of(total.get(), sw.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+        return Triple.of(total.get(), sw.elapsed(), newTable);
     }
 
     /**
