@@ -25,6 +25,7 @@ import org.checkerframework.checker.units.qual.A;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -279,6 +280,17 @@ public class IO {
         FileOutputStream fileOutputStream = new FileOutputStream(file);
         IOUtils.write(string, fileOutputStream, StandardCharsets.UTF_8);
         fileOutputStream.close();
+    }
+
+    /**
+     * 读取图片
+     *
+     * @param uri 图片地址
+     * @return 图片数据
+     * @throws IOException 异常
+     */
+    public BufferedImage readImage(URI uri) throws IOException {
+        return ImageIO.read(uri.toURL());
     }
 
     /**
