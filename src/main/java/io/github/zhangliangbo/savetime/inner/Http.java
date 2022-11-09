@@ -8,6 +8,7 @@ import com.google.common.base.Joiner;
 import io.github.zhangliangbo.savetime.ST;
 import io.github.zhangliangbo.savetime.TokenGenerator;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
@@ -103,6 +104,9 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     private URI createUri(String key, String url, Map<String, Object> query) throws Exception {
         JsonNode env = Optional.ofNullable(getOrCreate(key)).map(Triple::getLeft).orElse(getNode(key));
         URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
+        if (Objects.nonNull(tokenGenerator)) {
+            uri = tokenGenerator.sign(env, uri);
+        }
         System.out.println(uri);
         return uri;
     }
@@ -157,6 +161,10 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
     private void processHeader(String key, Request request, Map<String, String> header) throws Exception {
         if (Objects.nonNull(header)) {
+            //指定默认的content-type
+            if (!header.containsKey(HttpHeaders.CONTENT_TYPE)) {
+                header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
+            }
             for (Map.Entry<String, String> entry : header.entrySet()) {
                 request.addHeader(entry.getKey(), entry.getValue());
             }
@@ -271,6 +279,16 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         return "Basic " + Base64.encodeBase64String(
                 (username + ":" + password).getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    /**
+     * md5混淆
+     *
+     * @param hash hash值
+     * @return 混淆之后的值
+     */
+    public String sign(String hash) {
+        return DigestUtils.md5Hex(hash);
     }
 
 }
