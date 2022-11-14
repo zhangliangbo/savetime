@@ -19,6 +19,7 @@ public final class ST {
     public static final StCollection collection = new StCollection();
     public static final Nacos nacos = new Nacos();
     public static final Lucene lucene = new Lucene();
+    public static final JenkinsRest jenkinsRest = new JenkinsRest();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
