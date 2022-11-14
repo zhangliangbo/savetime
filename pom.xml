@@ -139,7 +139,7 @@
     <dependency>
       <groupId>io.github.cdancy</groupId>
       <artifactId>jenkins-rest</artifactId>
-      <version>1.0.2</version>
+      <version>1.0.1</version>
     </dependency>
   </dependencies>
 
