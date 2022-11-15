@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -81,7 +83,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         return arrayNode;
     }
 
-    public JsonNode jobsByPattern(String key, List<String> patterns) throws Exception {
+    public JsonNode jobsByPatterns(String key, List<String> patterns) throws Exception {
         JobList jobList = getOrCreate(key).api().jobsApi().jobList(StringUtils.EMPTY);
         ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
         if (CollectionUtils.isNotEmpty(jobList.jobs())) {
@@ -97,6 +99,10 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
             }
         }
         return arrayNode;
+    }
+
+    public JsonNode jobsByPattern(String key, String pattern) throws Exception {
+        return jobsByPatterns(key, Lists.newArrayList(pattern));
     }
 
     public JsonNode jobInfo(String key, String job) throws Exception {
@@ -186,8 +192,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
             Integer lastBuildNumber = lastBuildNumber(key, job);
             while (true) {
                 JsonNode jsonNode = buildInfo(key, job, lastBuildNumber);
-                boolean building = jsonNode.get("building").asBoolean();
-                if (building) {
+                JsonNode buildingNode = jsonNode.get("building");
+                if (Objects.nonNull(buildingNode) && buildingNode.asBoolean()) {
                     JsonNode stopJob = stopJob(key, job, lastBuildNumber);
                     System.out.printf("停止任务 %s %s %s %s%n", key, job, lastBuildNumber, stopJob);
                     lastBuildNumber--;
@@ -203,7 +209,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         while (true) {
             lastBuildNumber = lastBuildNumber(key, job);
             JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
-            if (buildInfo.get("queueId").asInt() < queueId) {
+            JsonNode queueIdNode = buildInfo.get("queueId");
+            if (Objects.nonNull(queueIdNode) && queueIdNode.asInt() < queueId) {
                 TimeUnit.SECONDS.sleep(checkInterval);
             } else {
                 break;
@@ -212,7 +219,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         //等待任务完成
         while (true) {
             JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
-            if (buildInfo.get("building").asBoolean()) {
+            JsonNode buildingNode = buildInfo.get("building");
+            if (Objects.nonNull(buildingNode) && buildingNode.asBoolean()) {
                 TimeUnit.SECONDS.sleep(checkInterval);
             } else {
                 break;
