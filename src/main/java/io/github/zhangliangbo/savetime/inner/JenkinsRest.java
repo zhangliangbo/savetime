@@ -24,6 +24,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @author zhangliangbo
@@ -74,6 +76,24 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
                 objectNode.put("name", job.name());
                 objectNode.put("url", job.url());
                 arrayNode.add(objectNode);
+            }
+        }
+        return arrayNode;
+    }
+
+    public JsonNode jobsByPattern(String key, List<String> patterns) throws Exception {
+        JobList jobList = getOrCreate(key).api().jobsApi().jobList(StringUtils.EMPTY);
+        ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
+        if (CollectionUtils.isNotEmpty(jobList.jobs())) {
+            List<Pattern> patternList = patterns.stream().map(Pattern::compile).collect(Collectors.toList());
+            for (Job job : jobList.jobs()) {
+                if (patternList.stream().anyMatch(p -> p.matcher(job.name()).matches())) {
+                    ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+                    objectNode.put("clazz", job.clazz());
+                    objectNode.put("name", job.name());
+                    objectNode.put("url", job.url());
+                    arrayNode.add(objectNode);
+                }
             }
         }
         return arrayNode;
