@@ -209,8 +209,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         while (true) {
             lastBuildNumber = lastBuildNumber(key, job);
             JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
+            System.out.println(buildInfo);
             JsonNode queueIdNode = buildInfo.get("queueId");
-            System.out.println(queueIdNode);
             if (Objects.nonNull(queueIdNode) && queueIdNode.asInt() < queueId) {
                 TimeUnit.SECONDS.sleep(checkInterval);
             } else {
