@@ -2,6 +2,7 @@ package io.github.zhangliangbo.savetime.inner;
 
 import com.cdancy.jenkins.rest.JenkinsClient;
 import com.cdancy.jenkins.rest.domain.common.Error;
+import com.cdancy.jenkins.rest.domain.common.ErrorsHolder;
 import com.cdancy.jenkins.rest.domain.common.IntegerResponse;
 import com.cdancy.jenkins.rest.domain.common.RequestStatus;
 import com.cdancy.jenkins.rest.domain.job.BuildInfo;
@@ -25,7 +26,9 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -35,9 +38,11 @@ import java.util.stream.Collectors;
  */
 public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
 
+    private volatile boolean valid = true;
+
     @Override
     protected boolean isValid(JenkinsClient jenkinsClient) {
-        return true;
+        return valid;
     }
 
     @Override
@@ -51,6 +56,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         String username = jenkins.get("username").asText();
         String password = jenkins.get("password").asText();
 
+        this.valid = true;
+
         return JenkinsClient.builder()
                 .endPoint(String.join(":", host, String.valueOf(port)))
                 .credentials(String.join(":", username, password))
@@ -58,7 +65,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
     }
 
     public JsonNode systemInfo(String key) throws Exception {
-        SystemInfo systemInfo = getOrCreate(key).api().systemApi().systemInfo();
+        SystemInfo systemInfo = mayRetry(key, () -> getOrCreate(key).api().systemApi().systemInfo());
         ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
         objectNode.put("hudsonVersion", systemInfo.hudsonVersion());
         objectNode.put("jenkinsSession", systemInfo.jenkinsSession());
@@ -140,7 +147,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
     }
 
     public JsonNode buildJobWithParameters(String key, String job, Map<String, List<String>> map) throws Exception {
-        IntegerResponse integerResponse = getOrCreate(key).api().jobsApi().buildWithParameters(StringUtils.EMPTY, job, map);
+        IntegerResponse integerResponse = mayRetry(key, () -> getOrCreate(key).api().jobsApi().buildWithParameters(StringUtils.EMPTY, job, map));
         return toNode(integerResponse);
     }
 
@@ -162,7 +169,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
     }
 
     public JsonNode stopJob(String key, String job, int number) throws Exception {
-        RequestStatus requestStatus = getOrCreate(key).api().jobsApi().stop(StringUtils.EMPTY, job, number);
+        RequestStatus requestStatus = mayRetry(key, () -> getOrCreate(key).api().jobsApi().stop(StringUtils.EMPTY, job, number));
         ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
         objectNode.put("value", requestStatus.value());
         if (CollectionUtils.isNotEmpty(requestStatus.errors())) {
@@ -202,16 +209,16 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
                 }
             }
         }
-        IntegerResponse integerResponse = getOrCreate(key).api().jobsApi().buildWithParameters(StringUtils.EMPTY, job, map);
-        Integer queueId = integerResponse.value();
-        System.out.println(integerResponse);
+        JsonNode buildJob = buildJobWithParameters(key, job, map);
+        int queueId = buildJob.get("value").asInt();
+        System.out.println(buildJob);
         //等待任务开始
         Integer lastBuildNumber;
         while (true) {
             lastBuildNumber = lastBuildNumber(key, job);
             JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
-            System.out.println(buildInfo);
             JsonNode queueIdNode = buildInfo.get("queueId");
+            System.out.printf("%s %s%n", job, queueIdNode);
             if (Objects.nonNull(queueIdNode) && queueIdNode.asInt() < queueId) {
                 TimeUnit.SECONDS.sleep(checkInterval);
             } else {
@@ -228,11 +235,26 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
                 break;
             }
         }
-        return toNode(integerResponse);
+        return buildJob;
     }
 
     public JsonNode buildJobWithParametersSync(String key, String job, Map<String, List<String>> map) throws Exception {
-        return buildJobWithParametersSync(key, job, map, 5, true);
+        return buildJobWithParametersSync(key, job, map, 10, true);
+    }
+
+    private <T extends ErrorsHolder> T mayRetry(String key, Callable<T> callable) throws Exception {
+        while (true) {
+            T t = callable.call();
+            if (CollectionUtils.isEmpty(t.errors())) {
+                return t;
+            } else {
+                System.out.println(t.errors());
+                //关闭现有客户端
+                getOrCreate(key).close();
+                //置为失效，这样后续才生成新的客户端
+                this.valid = false;
+            }
+        }
     }
 
 }
