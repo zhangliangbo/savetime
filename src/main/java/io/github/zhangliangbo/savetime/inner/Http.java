@@ -15,10 +15,7 @@ import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.fluent.Content;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.client5.http.fluent.Response;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.core5.util.Timeout;
 
@@ -27,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * @author zhangliangbo
@@ -114,7 +112,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode get(String key, String url, Map<String, Object> query, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.get(uri).connectTimeout(Timeout.ofMinutes(1));
-        processHeader(key, request, header);
+        processHeader(key, request, header, Method.GET);
         return send(request);
     }
 
@@ -159,10 +157,11 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         }
     }
 
-    private void processHeader(String key, Request request, Map<String, String> header) throws Exception {
+    private void processHeader(String key, Request request, Map<String, String> header, Method method) throws Exception {
         if (Objects.nonNull(header)) {
             //指定默认的content-type
-            if (!header.containsKey(HttpHeaders.CONTENT_TYPE)) {
+            boolean mayHaveBody = Stream.of(Method.POST, Method.PUT).anyMatch(t -> t == method);
+            if (mayHaveBody && !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
                 header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
             }
             for (Map.Entry<String, String> entry : header.entrySet()) {
@@ -179,7 +178,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode post(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.post(uri);
-        processHeader(key, request, header);
+        processHeader(key, request, header, Method.POST);
         processBody(request, body, header);
         return send(request);
     }
@@ -232,7 +231,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
         URI uri = createUri(key, url, query);
         Request request = Request.post(uri).body(httpEntity).connectTimeout(Timeout.ofMinutes(1));
-        processHeader(key, request, null);
+        processHeader(key, request, null, Method.POST);
         return send(request);
     }
 
@@ -240,7 +239,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode put(String key, String url, Map<String, Object> query, Object body, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.put(uri);
-        processHeader(key, request, header);
+        processHeader(key, request, header, Method.PUT);
         processBody(request, body, header);
         return send(request);
     }
@@ -262,7 +261,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     public JsonNode delete(String key, String url, Map<String, Object> query, Map<String, String> header) throws Exception {
         URI uri = createUri(key, url, query);
         Request request = Request.delete(uri);
-        processHeader(key, request, header);
+        processHeader(key, request, header, Method.DELETE);
         return send(request);
     }
 

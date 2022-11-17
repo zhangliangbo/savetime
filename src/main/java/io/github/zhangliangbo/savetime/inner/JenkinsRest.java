@@ -204,6 +204,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         }
         IntegerResponse integerResponse = getOrCreate(key).api().jobsApi().buildWithParameters(StringUtils.EMPTY, job, map);
         Integer queueId = integerResponse.value();
+        System.out.println(integerResponse);
         //等待任务开始
         Integer lastBuildNumber;
         while (true) {
