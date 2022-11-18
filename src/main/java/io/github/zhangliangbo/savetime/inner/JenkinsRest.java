@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -211,7 +210,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         }
         JsonNode buildJob = buildJobWithParameters(key, job, map);
         int queueId = buildJob.get("value").asInt();
-        System.out.println(buildJob);
+        System.out.println(System.out.printf("%s %s%n", job, buildJob));
         //等待任务开始
         Integer lastBuildNumber;
         while (true) {

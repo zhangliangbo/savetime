@@ -354,4 +354,16 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return query(key, schema, String.format("show global variables like '%s'", "%" + variable + "%"));
     }
 
+    /**
+     * 查询表格
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Map<String, List<Object>> showTableLike(String key, String schema, String table) throws Exception {
+        return query(key, schema, String.format("show tables like '%s'", "%" + table + "%"));
+    }
+
 }
