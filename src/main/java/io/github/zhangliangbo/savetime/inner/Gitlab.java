@@ -1,7 +1,6 @@
 package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.zhangliangbo.savetime.ST;
 
 /**
  * @author zhangliangbo
@@ -16,7 +15,7 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode version(String key) throws Exception {
-        return get("dev", "/version");
+        return get(key, "/version");
     }
 
     /**
@@ -27,7 +26,7 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode groups(String key) throws Exception {
-        return get("dev", "/groups");
+        return get(key, "/groups");
     }
 
     /**
@@ -38,7 +37,7 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode projects(String key) throws Exception {
-        return get("dev", "/projects");
+        return get(key, "/projects");
     }
 
 }
