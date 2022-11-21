@@ -3,16 +3,27 @@ package io.github.zhangliangbo.savetime.inner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.vavr.collection.LinkedHashMap;
 
 import java.net.URLEncoder;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhangliangbo
  * @since 2022-11-19
  */
 public class Gitlab extends Http {
+
+    interface PageProcessor {
+        JsonNode apply(int page, int size) throws Exception;
+    }
+
+    private final Cache<Object, Object> groupIdCache = Caffeine.newBuilder().maximumSize(100).build();
+    private final Cache<Object, Object> projectIdCache = Caffeine.newBuilder().maximumSize(1000).build();
+
     /**
      * 版本
      *
@@ -24,10 +35,6 @@ public class Gitlab extends Http {
         return get(key, "/version");
     }
 
-    interface PageProcessor {
-        JsonNode apply(int page) throws Exception;
-    }
-
     /**
      * 组
      *
@@ -36,16 +43,17 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode groups(String key, String search) throws Exception {
-        return extractPart(page -> get(key, "/groups", LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", 10, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
+        return extractPart((page, size) -> get(key, "/groups", LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", size, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
     }
 
     public JsonNode extractPart(PageProcessor processor) throws Exception {
         int page = 1;
+        int size = 10;
 
         ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
 
         while (true) {
-            JsonNode jsonNode = processor.apply(page);
+            JsonNode jsonNode = processor.apply(page, size);
             if (!jsonNode.isArray() || jsonNode.isEmpty()) {
                 break;
             }
@@ -53,6 +61,12 @@ public class Gitlab extends Http {
             for (JsonNode node : an) {
                 arrayNode.add(node);
             }
+
+            //不满一页，说明后续没有数据，直接退出循环
+            if (an.size() < size) {
+                break;
+            }
+
             ++page;
         }
 
@@ -67,8 +81,16 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public String groupIdByName(String key, String name) throws Exception {
+        Object present = groupIdCache.getIfPresent(name);
+        if (Objects.nonNull(present)) {
+            return (String) present;
+        }
         JsonNode jsonNode = groups(key, name);
-        return extractId(jsonNode, name);
+        String id = extractId(jsonNode, name);
+        if (Objects.nonNull(id)) {
+            groupIdCache.put(name, id);
+        }
+        return id;
     }
 
     private String extractId(JsonNode jsonNode, String name) {
@@ -106,7 +128,7 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode projects(String key, String search) throws Exception {
-        return extractPart(page -> get(key, "/projects", io.vavr.collection.LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", 10, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
+        return extractPart((page, size) -> get(key, "/projects", io.vavr.collection.LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", size, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
     }
 
     /**
@@ -118,7 +140,7 @@ public class Gitlab extends Http {
      */
     public JsonNode projectsByGroup(String key, String groupName, String search) throws Exception {
         String groupId = groupIdByName(key, groupName);
-        return extractPart(page -> get(key, String.format("/groups/%s/projects", groupId), io.vavr.collection.LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", 10, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
+        return extractPart((page, size) -> get(key, String.format("/groups/%s/projects", groupId), io.vavr.collection.LinkedHashMap.<String, Object>of("search", search, "page", page, "per_page", size, "simple", true).filterValues(Objects::nonNull).toJavaMap()));
     }
 
     /**
@@ -129,8 +151,17 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public String projectIdByName(String key, String groupName, String projectName) throws Exception {
+        String projectKey = String.join("-", groupName, projectName);
+        Object present = projectIdCache.getIfPresent(projectKey);
+        if (Objects.nonNull(present)) {
+            return (String) present;
+        }
         JsonNode jsonNode = projectsByGroup(key, groupName, projectName);
-        return extractId(jsonNode, projectName);
+        String id = extractId(jsonNode, projectName);
+        if (Objects.nonNull(id)) {
+            projectIdCache.put(projectKey, id);
+        }
+        return id;
     }
 
     /**
@@ -155,7 +186,7 @@ public class Gitlab extends Http {
      */
     public JsonNode branches(String key, String groupName, String projectName) throws Exception {
         String projectId = projectIdByName(key, groupName, projectName);
-        return extractPart(page -> get(key, String.format("/projects/%s/repository/branches", projectId), io.vavr.collection.LinkedHashMap.<String, Object>of("page", page, "per_page", 10).filterValues(Objects::nonNull).toJavaMap()));
+        return extractPart((page, size) -> get(key, String.format("/projects/%s/repository/branches", projectId), io.vavr.collection.LinkedHashMap.<String, Object>of("page", page, "per_page", size).filterValues(Objects::nonNull).toJavaMap()));
     }
 
     /**
@@ -191,7 +222,7 @@ public class Gitlab extends Http {
      * @throws Exception 异常
      */
     public JsonNode repositoryTreeByProjectId(String key, String projectId, String branch, String path) throws Exception {
-        return extractPart(page -> get(key, String.format("/projects/%s/repository/tree", projectId), io.vavr.collection.LinkedHashMap.<String, Object>of("ref", branch, "path", path, "page", page, "per_page", 10).filterValues(Objects::nonNull).toJavaMap()));
+        return extractPart((page, size) -> get(key, String.format("/projects/%s/repository/tree", projectId), io.vavr.collection.LinkedHashMap.<String, Object>of("ref", branch, "path", path, "page", page, "per_page", size).filterValues(Objects::nonNull).toJavaMap()));
     }
 
     /**

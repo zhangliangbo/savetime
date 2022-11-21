@@ -210,7 +210,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         }
         JsonNode buildJob = buildJobWithParameters(key, job, map);
         int queueId = buildJob.get("value").asInt();
-        System.out.println(System.out.printf("%s %s%n", job, buildJob));
+        System.out.printf("%s %s%n", job, buildJob);
         //等待任务开始
         Integer lastBuildNumber;
         while (true) {
