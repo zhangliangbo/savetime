@@ -9,7 +9,6 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.lang3.time.DateFormatUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -377,6 +375,30 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     public Object count(String key, String schema, String table) throws Exception {
         return query(key, schema, String.format("select count(*) from %s", table)).values().stream().findFirst().orElse(new LinkedList<>())
                 .stream().findFirst().orElse(0L);
+    }
+
+    /**
+     * 查询记录总数
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Object countTableLikeParallel(String key, String schema, String table) throws Exception {
+        return showTableLike(key, schema, table).stream().parallel()
+                .map(t -> {
+                            try {
+                                Long res = (Long) count(key, schema, (String) t);
+                                System.out.printf("查询数量 %s %s %s %s%n", key, schema, t, res);
+                                return res;
+                            } catch (Exception e) {
+                                System.out.printf("查询数量报错 %s %s %s %s%n", key, schema, t, e);
+                                return 0L;
+                            }
+                        }
+                )
+                .reduce(0L, Long::sum);
     }
 
 }
