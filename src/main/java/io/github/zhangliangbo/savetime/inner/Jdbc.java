@@ -362,8 +362,8 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param table  表格
      * @return 变量信息
      */
-    public Map<String, List<Object>> showTableLike(String key, String schema, String table) throws Exception {
-        return query(key, schema, String.format("show tables like '%s'", "%" + table + "%"));
+    public List<Object> showTableLike(String key, String schema, String table) throws Exception {
+        return query(key, schema, String.format("show tables like '%s'", "%" + table + "%")).values().stream().findFirst().orElse(new LinkedList<>());
     }
 
     /**
@@ -374,8 +374,9 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param table  表格
      * @return 变量信息
      */
-    public Long count(String key, String schema, String table) throws Exception {
-        return (Long) query(key, schema, String.format("select count(*) from %s", table)).get("count(*)").get(0);
+    public Object count(String key, String schema, String table) throws Exception {
+        return query(key, schema, String.format("select count(*) from %s", table)).values().stream().findFirst().orElse(new LinkedList<>())
+                .stream().findFirst().orElse(0L);
     }
 
 }
