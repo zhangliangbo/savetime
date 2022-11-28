@@ -366,4 +366,16 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return query(key, schema, String.format("show tables like '%s'", "%" + table + "%"));
     }
 
+    /**
+     * 查询记录总数
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Long count(String key, String schema, String table) throws Exception {
+        return (Long) query(key, schema, String.format("select count(*) from %s", table)).get("count(*)").get(0);
+    }
+
 }
