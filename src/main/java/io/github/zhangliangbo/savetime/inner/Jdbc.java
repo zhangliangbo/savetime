@@ -401,4 +401,16 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 .reduce(0L, Long::sum);
     }
 
+    /**
+     * 查询索引
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Map<String, List<Object>> showIndex(String key, String schema, String table) throws Exception {
+        return query(key, schema, String.format("show index from %s", table));
+    }
+
 }
