@@ -62,15 +62,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
     public Map<String, List<Object>> queryNoRetry(String key, String schema, String sql, Object... args) throws Exception {
         List<Map<String, Object>> result = queryList(key, schema, sql, args);
-        if (CollectionUtils.isEmpty(result)) {
-            return new LinkedHashMap<>();
-        }
-        Map<String, List<Object>> map = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : result.get(0).entrySet()) {
-            List<Object> list = result.stream().map(m -> m.get(entry.getKey())).collect(Collectors.toCollection(LinkedList::new));
-            map.put(entry.getKey(), list);
-        }
-        return map;
+        return toMap(result);
     }
 
     public List<Map<String, Object>> queryList(String key, String schema, String sql, Object... args) throws Exception {
@@ -434,8 +426,8 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param table  表格
      * @return 变量信息
      */
-    public List<Map<String, Object>> truncateTableLikeParallel(String key, String schema, String table) throws Exception {
-        return showTableLike(key, schema, table).stream().parallel()
+    public Map<String, List<Object>> truncateTableLikeParallel(String key, String schema, String table) throws Exception {
+        List<Map<String, Object>> result = showTableLike(key, schema, table).stream().parallel()
                 .map(t -> {
                             Map<String, Object> map = new LinkedHashMap<>();
                             map.put("table", t);
@@ -447,10 +439,24 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                                 System.out.printf("清空报错 %s %s %s %s%n", key, schema, t, e);
                                 map.put("result", -1);
                             }
+
                             return map;
                         }
                 )
                 .collect(Collectors.toList());
+        return toMap(result);
+    }
+
+    private Map<String, List<Object>> toMap(List<Map<String, Object>> result) {
+        if (CollectionUtils.isEmpty(result)) {
+            return new LinkedHashMap<>();
+        }
+        Map<String, List<Object>> map = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : result.get(0).entrySet()) {
+            List<Object> list = result.stream().map(m -> m.get(entry.getKey())).collect(Collectors.toCollection(LinkedList::new));
+            map.put(entry.getKey(), list);
+        }
+        return map;
     }
 
 }
