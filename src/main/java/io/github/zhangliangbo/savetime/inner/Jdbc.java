@@ -413,4 +413,44 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return query(key, schema, String.format("show index from %s", table));
     }
 
+    /**
+     * 清空表
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 移除表格结果
+     * @throws Exception 异常
+     */
+    public int truncate(String key, String schema, String table) throws Exception {
+        return update(key, schema, "truncate " + table);
+    }
+
+    /**
+     * 查询记录总数
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public List<Map<String, Object>> truncateTableLikeParallel(String key, String schema, String table) throws Exception {
+        return showTableLike(key, schema, table).stream().parallel()
+                .map(t -> {
+                            Map<String, Object> map = new LinkedHashMap<>();
+                            map.put("table", t);
+                            try {
+                                int res = truncate(key, schema, (String) t);
+                                System.out.printf("清空 %s %s %s %s%n", key, schema, t, res);
+                                map.put("result", res);
+                            } catch (Exception e) {
+                                System.out.printf("清空报错 %s %s %s %s%n", key, schema, t, e);
+                                map.put("result", -1);
+                            }
+                            return map;
+                        }
+                )
+                .collect(Collectors.toList());
+    }
+
 }
