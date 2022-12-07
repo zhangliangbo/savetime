@@ -244,6 +244,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         }
         ++times;
         System.out.printf("%s %s 报错开始重试 %s%n", job, buildJob, times);
+        TimeUnit.SECONDS.sleep(checkInterval);
         return buildJobWithParametersSync(key, job, map, checkInterval, closeBefore, times);
     }
 

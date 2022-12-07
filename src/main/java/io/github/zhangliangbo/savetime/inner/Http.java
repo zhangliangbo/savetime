@@ -160,10 +160,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     private void processHeader(String key, Request request, Map<String, String> header, Method method) throws Exception {
         if (Objects.nonNull(header)) {
             //指定默认的content-type
-            boolean mayHaveBody = Stream.of(Method.POST, Method.PUT).anyMatch(t -> t == method);
-            if (mayHaveBody && !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
-                header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-            }
+            assignDefaultContentType(method, header);
             for (Map.Entry<String, String> entry : header.entrySet()) {
                 request.addHeader(entry.getKey(), entry.getValue());
             }
@@ -171,6 +168,13 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         if (Objects.nonNull(tokenGenerator)) {
             String token = makeToken(key);
             request.addHeader(tokenGenerator.getTokenHeader(), token);
+        }
+    }
+
+    private void assignDefaultContentType(Method method, Map<String, String> header) {
+        boolean mayHaveBody = Stream.of(Method.POST, Method.PUT).anyMatch(t -> t == method);
+        if (mayHaveBody && !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
+            header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
         }
     }
 
@@ -201,6 +205,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
         System.out.println(uri);
         Request request = Request.post(uri);
         if (Objects.nonNull(header)) {
+            assignDefaultContentType(Method.POST, header);
             for (Map.Entry<String, String> entry : header.entrySet()) {
                 request.addHeader(entry.getKey(), entry.getValue());
             }
