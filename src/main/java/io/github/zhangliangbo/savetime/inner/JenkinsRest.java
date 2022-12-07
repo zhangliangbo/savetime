@@ -142,6 +142,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         objectNode.put("timestamp", LocalDateTime.ofInstant(Instant.ofEpochMilli(buildInfo.timestamp()), ZoneId.systemDefault()).toString());
         objectNode.put("duration", buildInfo.duration());
         objectNode.put("estimatedDuration", Duration.ofMillis(buildInfo.estimatedDuration()).toString());
+        objectNode.put("result", Objects.equals(buildInfo.result(), "SUCCESS"));
         return objectNode;
     }
 
@@ -193,7 +194,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         return getOrCreate(key).api().jobsApi().lastBuildTimestamp(StringUtils.EMPTY, job);
     }
 
-    public JsonNode buildJobWithParametersSync(String key, String job, Map<String, List<String>> map, int checkInterval, boolean closeBefore) throws Exception {
+    public JsonNode buildJobWithParametersSync(String key, String job, Map<String, List<String>> map, int checkInterval, boolean closeBefore, int times) throws Exception {
         if (closeBefore) {
             Integer lastBuildNumber = lastBuildNumber(key, job);
             while (true) {
@@ -234,11 +235,20 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
                 break;
             }
         }
-        return buildJob;
+
+        JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
+        JsonNode resultNode = buildInfo.get("result");
+        boolean result = resultNode.asBoolean(true);
+        if (result || times >= 3) {
+            return buildJob;
+        }
+        ++times;
+        System.out.printf("%s %s 报错开始重试 %s%n", job, buildJob, times);
+        return buildJobWithParametersSync(key, job, map, checkInterval, closeBefore, times);
     }
 
     public JsonNode buildJobWithParametersSync(String key, String job, Map<String, List<String>> map) throws Exception {
-        return buildJobWithParametersSync(key, job, map, 10, true);
+        return buildJobWithParametersSync(key, job, map, 10, true, 0);
     }
 
     private <T extends ErrorsHolder> T mayRetry(String key, Callable<T> callable) throws Exception {
