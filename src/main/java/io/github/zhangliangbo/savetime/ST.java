@@ -22,6 +22,7 @@ public final class ST {
     public static final JenkinsRest jenkinsRest = new JenkinsRest();
     public static final Cf cf = new Cf();
     public static final Gitlab gitlab = new Gitlab();
+    public static final Rabbit rabbit = new Rabbit();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
