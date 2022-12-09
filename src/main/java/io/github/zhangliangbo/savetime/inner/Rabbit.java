@@ -1,6 +1,7 @@
 package io.github.zhangliangbo.savetime.inner;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -44,6 +45,10 @@ public class Rabbit extends AbstractConfigurable<Channel> {
 
     public int getChannelNumber(String key) throws Exception {
         return getOrCreate(key).getChannelNumber();
+    }
+
+    public AMQP.BasicProperties.Builder newBasicPropertiesBuilder() throws Exception {
+        return new AMQP.BasicProperties().builder();
     }
 
 }
