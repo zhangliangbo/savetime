@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -161,8 +162,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
         }
 
-        sw.stop();
-        return Triple.of(total, sw.elapsed(), newTable);
+        return Triple.of(total, sw.stop().elapsed(), newTable);
     }
 
     public int rename(String key, String schema, String oldTableName, String newTableName) throws Exception {
@@ -295,8 +295,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
         System.out.println("等待所有任务结束");
 
-        sw.stop();
-        return Triple.of(total.get(), sw.elapsed(), newTable);
+        return Triple.of(total.get(), sw.stop().elapsed(), newTable);
     }
 
     /**
@@ -479,6 +478,67 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      */
     public Map<String, List<Object>> showTransactionList(String key, String schema) throws Exception {
         return query(key, schema, "select * from information_schema.innodb_trx");
+    }
+
+    /**
+     * 导出sql文件
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @return 导出结果
+     */
+    public Triple<Long, Duration, Long> exportInsertSql(String key, String schema, String table, Consumer<List<String>> consumer, int batchSize) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+
+        String primary = getPrimaryColumn(key, schema, table);
+        String querySql = String.format("select * from %s where %s>? order by %s limit ?", table, primary, primary);
+        long total = 0L;
+        long batch = 0L;
+        long last = 0L;
+        while (true) {
+            List<Map<String, Object>> page = queryList(key, schema, querySql, last, batchSize);
+            if (page.isEmpty()) {
+                break;
+            }
+
+            List<String> sqlList = new LinkedList<>();
+            String insertSql = "insert into %s %s values %s;";
+
+            for (Map<String, Object> record : page) {
+                StringJoiner keyJoiner = new StringJoiner(",", "(", ")");
+                StringJoiner valueJoiner = new StringJoiner(",", "(", ")");
+                for (Map.Entry<String, Object> entry : record.entrySet()) {
+                    keyJoiner.add(entry.getKey());
+                    Object value = entry.getValue();
+                    String v;
+                    if (value instanceof String) {
+                        v = "'" + value + "'";
+                    } else if (value instanceof java.sql.Timestamp) {
+                        v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
+                    } else if (value instanceof java.sql.Date) {
+                        v = "'" + DateFormatUtils.format((java.sql.Date) value, "yyyy-MM-dd") + "'";
+                    } else if (value instanceof java.sql.Time) {
+                        v = "'" + DateFormatUtils.format((java.sql.Time) value, "HH:mm:ss") + "'";
+                    } else {
+                        v = Objects.isNull(value) ? "null" : value.toString();
+                    }
+                    valueJoiner.add(v);
+                }
+                String format = String.format(insertSql, table, keyJoiner, valueJoiner);
+                sqlList.add(format);
+            }
+
+            if (Objects.nonNull(consumer)) {
+                consumer.accept(sqlList);
+            }
+
+            total += page.size();
+            batch++;
+            System.out.printf("总数 %s 批次 %s%n", total, batch);
+            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
+        }
+
+        return Triple.of(total, sw.stop().elapsed(), batch);
     }
 
 }
