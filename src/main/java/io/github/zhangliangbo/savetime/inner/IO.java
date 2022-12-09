@@ -4,27 +4,29 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
-import com.alibaba.excel.metadata.Cell;
-import com.alibaba.excel.metadata.data.ReadCellData;
-import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Stopwatch;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.rabbitmq.client.LongString;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.checkerframework.checker.units.qual.A;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -404,6 +406,43 @@ public class IO {
 
         stopwatch.stop();
         return Pair.of(line.get(), stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    public JsonNode toJsonNode(Map<String, Object> map) {
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        if (MapUtils.isEmpty(map)) {
+            return objectNode;
+        }
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                objectNode.put(key, (String) value);
+            } else if (value instanceof Long) {
+                objectNode.put(key, (Long) value);
+            } else if (value instanceof Integer) {
+                objectNode.put(key, (Integer) value);
+            } else if (value instanceof Short) {
+                objectNode.put(key, (Short) value);
+            } else if (value instanceof Double) {
+                objectNode.put(key, (Double) value);
+            } else if (value instanceof Float) {
+                objectNode.put(key, (Float) value);
+            } else if (value instanceof BigDecimal) {
+                objectNode.put(key, (BigDecimal) value);
+            } else if (value instanceof BigInteger) {
+                objectNode.put(key, (BigInteger) value);
+            } else if (value instanceof Boolean) {
+                objectNode.put(key, (Boolean) value);
+            } else if (value instanceof byte[]) {
+                objectNode.put(key, (byte[]) value);
+            } else if (value instanceof LongString) {
+                objectNode.put(key, value.toString());
+            } else {
+                objectNode.putPOJO(key, value);
+            }
+        }
+        return objectNode;
     }
 
 }

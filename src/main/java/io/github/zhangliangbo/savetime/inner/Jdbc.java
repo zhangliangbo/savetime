@@ -459,4 +459,26 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return map;
     }
 
+    /**
+     * 查询线程列表
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @return 线程列表
+     */
+    public Map<String, List<Object>> showProcessList(String key, String schema) throws Exception {
+        return query(key, schema, "select * from information_schema.processlist order by time desc");
+    }
+
+    /**
+     * 查询事务列表
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @return 事务列表
+     */
+    public Map<String, List<Object>> showTransactionList(String key, String schema) throws Exception {
+        return query(key, schema, "select * from information_schema.innodb_trx");
+    }
+
 }
