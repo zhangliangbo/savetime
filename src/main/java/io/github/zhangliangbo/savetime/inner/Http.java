@@ -32,7 +32,12 @@ import java.util.stream.Stream;
  */
 public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
+    private TokenGenerator tokenGenerator;
     private Map<String, TokenGenerator> tokenGeneratorMap;
+
+    public void setTokenGenerator(TokenGenerator tokenGenerator) {
+        this.tokenGenerator = tokenGenerator;
+    }
 
     public void setTokenGeneratorMap(Map<String, TokenGenerator> tokenGeneratorMap) {
         this.tokenGeneratorMap = tokenGeneratorMap;
@@ -305,7 +310,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
      * @return token生成器
      */
     public TokenGenerator getTokenGenerator(String key) {
-        return Optional.ofNullable(tokenGeneratorMap).map(t -> t.get(key)).orElse(null);
+        return Optional.ofNullable(this.tokenGeneratorMap).map(t -> t.get(key)).orElse(this.tokenGenerator);
     }
 
 }
