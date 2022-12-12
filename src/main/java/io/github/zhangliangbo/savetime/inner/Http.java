@@ -24,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -34,13 +35,15 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
     private TokenGenerator tokenGenerator;
     private Map<String, TokenGenerator> tokenGeneratorMap;
+    private Function<String, TokenGenerator> tokenGeneratorFunction;
 
     public void setTokenGenerator(TokenGenerator tokenGenerator) {
         this.tokenGenerator = tokenGenerator;
     }
 
-    public void setTokenGeneratorMap(Map<String, TokenGenerator> tokenGeneratorMap) {
-        this.tokenGeneratorMap = tokenGeneratorMap;
+    public void setTokenGeneratorFunction(Function<String, TokenGenerator> tokenGeneratorFunction) {
+        this.tokenGeneratorMap = new LinkedHashMap<>();
+        this.tokenGeneratorFunction = tokenGeneratorFunction;
     }
 
     @Override
@@ -310,7 +313,18 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
      * @return token生成器
      */
     public TokenGenerator getTokenGenerator(String key) {
-        return Optional.ofNullable(this.tokenGeneratorMap).map(t -> t.get(key)).orElse(this.tokenGenerator);
+        return Optional.ofNullable(tokenGeneratorMap)
+                .map(t -> {
+                    TokenGenerator tokenGenerator = t.get(key);
+                    //如果包含key，就返回，无论是否为null
+                    if (tokenGeneratorMap.containsKey(key)) {
+                        return tokenGenerator;
+                    }
+                    TokenGenerator apply = Optional.ofNullable(tokenGeneratorFunction).map(function -> function.apply(key)).orElse(null);
+                    tokenGeneratorMap.put(key, apply);
+                    return apply;
+                })
+                .orElse(this.tokenGenerator);
     }
 
 }
