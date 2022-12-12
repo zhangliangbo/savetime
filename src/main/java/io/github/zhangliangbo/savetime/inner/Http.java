@@ -32,10 +32,10 @@ import java.util.stream.Stream;
  */
 public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
 
-    private TokenGenerator tokenGenerator;
+    private Map<String, TokenGenerator> tokenGeneratorMap;
 
-    public void setTokenGenerator(TokenGenerator tokenGenerator) {
-        this.tokenGenerator = tokenGenerator;
+    public void setTokenGeneratorMap(Map<String, TokenGenerator> tokenGeneratorMap) {
+        this.tokenGeneratorMap = tokenGeneratorMap;
     }
 
     @Override
@@ -51,6 +51,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     protected Triple<JsonNode, String, Long> create(String key) throws Exception {
         System.out.println("生成新的token " + key);
         JsonNode jsonNode = getNode(key);
+        TokenGenerator tokenGenerator = getTokenGenerator(key);
         if (Objects.isNull(tokenGenerator)) {
             return null;
         }
@@ -102,6 +103,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     private URI createUri(String key, String url, Map<String, Object> query) throws Exception {
         JsonNode env = Optional.ofNullable(getOrCreate(key)).map(Triple::getLeft).orElse(getNode(key));
         URI uri = URI.create(env.get("gateway").asText() + url + queryString(query));
+        TokenGenerator tokenGenerator = getTokenGenerator(key);
         if (Objects.nonNull(tokenGenerator)) {
             uri = tokenGenerator.sign(env, uri);
         }
@@ -165,6 +167,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
                 request.addHeader(entry.getKey(), entry.getValue());
             }
         }
+        TokenGenerator tokenGenerator = getTokenGenerator(key);
         if (Objects.nonNull(tokenGenerator)) {
             String token = makeToken(key);
             request.addHeader(tokenGenerator.getTokenHeader(), token);
@@ -293,6 +296,16 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
      */
     public String sign(String hash) {
         return DigestUtils.md5Hex(hash);
+    }
+
+    /**
+     * 获取不同环境的token生成器
+     *
+     * @param key 环境
+     * @return token生成器
+     */
+    public TokenGenerator getTokenGenerator(String key) {
+        return Optional.ofNullable(tokenGeneratorMap).map(t -> t.get(key)).orElse(null);
     }
 
 }
