@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.rabbitmq.client.*;
 import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.hc.core5.http.ContentType;
 
 import java.net.URI;
-import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -80,7 +80,7 @@ public class Rabbit extends AbstractConfigurable<Channel> {
         propsNode.put("replyTo", props.getReplyTo());
         propsNode.put("expiration", props.getExpiration());
         propsNode.put("messageId", props.getMessageId());
-        propsNode.put("timestamp", Optional.ofNullable(props.getTimestamp()).map(Date::toString).orElse(null));
+        propsNode.put("timestamp", Optional.ofNullable(props.getTimestamp()).map(t -> DateFormatUtils.format(t, "yyyy-MM-dd HH:mm:ss.SSS")).orElse(null));
         propsNode.put("type", props.getType());
         propsNode.put("userId", props.getUserId());
         propsNode.put("appId", props.getAppId());
