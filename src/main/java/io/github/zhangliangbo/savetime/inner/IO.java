@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -416,6 +417,41 @@ public class IO {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
+            fillNode(objectNode, key, value);
+        }
+        return objectNode;
+    }
+
+    private void fillNode(JsonNode jsonNode, String key, Object value) {
+        if (jsonNode.isArray()) {
+            ArrayNode arrayNode = (ArrayNode) jsonNode;
+            if (value instanceof String) {
+                arrayNode.add((String) value);
+            } else if (value instanceof Long) {
+                arrayNode.add((Long) value);
+            } else if (value instanceof Integer) {
+                arrayNode.add((Integer) value);
+            } else if (value instanceof Short) {
+                arrayNode.add((Short) value);
+            } else if (value instanceof Double) {
+                arrayNode.add((Double) value);
+            } else if (value instanceof Float) {
+                arrayNode.add((Float) value);
+            } else if (value instanceof BigDecimal) {
+                arrayNode.add((BigDecimal) value);
+            } else if (value instanceof BigInteger) {
+                arrayNode.add((BigInteger) value);
+            } else if (value instanceof Boolean) {
+                arrayNode.add((Boolean) value);
+            } else if (value instanceof byte[]) {
+                arrayNode.add((byte[]) value);
+            } else if (value instanceof LongString) {
+                arrayNode.add(value.toString());
+            } else if (value instanceof Map) {
+                arrayNode.add(toJsonNode((Map) value));
+            }
+        } else {
+            ObjectNode objectNode = (ObjectNode) jsonNode;
             if (value instanceof String) {
                 objectNode.put(key, (String) value);
             } else if (value instanceof Long) {
@@ -438,11 +474,20 @@ public class IO {
                 objectNode.put(key, (byte[]) value);
             } else if (value instanceof LongString) {
                 objectNode.put(key, value.toString());
+            } else if (value instanceof Map) {
+                objectNode.set(key, toJsonNode((Map) value));
+            } else if (value instanceof Iterable) {
+                ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
+                Iterator iterator = ((Iterable) value).iterator();
+                while (iterator.hasNext()) {
+                    Object next = iterator.next();
+                    fillNode(arrayNode, null, next);
+                }
+                objectNode.set(key, arrayNode);
             } else {
                 objectNode.putPOJO(key, value);
             }
         }
-        return objectNode;
     }
 
 }

@@ -106,4 +106,17 @@ public class Rabbit extends AbstractConfigurable<Channel> {
         return objectNode;
     }
 
+    public JsonNode basicRecover(String key, boolean requeue) throws Exception {
+        AMQP.Basic.RecoverOk recoverOk = getOrCreate(key).basicRecover(requeue);
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("protocolClassId", recoverOk.protocolClassId());
+        objectNode.put("protocolMethodId", recoverOk.protocolMethodId());
+        objectNode.put("protocolMethodName", recoverOk.protocolMethodName());
+        return objectNode;
+    }
+
+    public JsonNode basicRecover(String key) throws Exception {
+        return basicRecover(key, true);
+    }
+
 }
