@@ -327,4 +327,8 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
                 .orElse(this.tokenGenerator);
     }
 
+    public Map<String, TokenGenerator> getTokenGeneratorMap() {
+        return tokenGeneratorMap;
+    }
+
 }
