@@ -483,8 +483,11 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     /**
      * 导出sql文件
      *
-     * @param key    环境
-     * @param schema 数据库
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param consumer  批量消费者
+     * @param batchSize 批量大小
      * @return 导出结果
      */
     public Triple<Long, Duration, Long> exportInsertSql(String key, String schema, String table, Consumer<List<String>> consumer, int batchSize) throws Exception {
@@ -539,6 +542,25 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         }
 
         return Triple.of(total, sw.stop().elapsed(), batch);
+    }
+
+    /**
+     * 导出sql文件
+     *
+     * @param key      环境
+     * @param schema   数据库
+     * @param table    表格
+     * @param consumer 单个消费者
+     * @return 导出结果
+     */
+    public Triple<Long, Duration, Long> exportInsertSql(String key, String schema, String table, Consumer<String> consumer) throws Exception {
+        return exportInsertSql(key, schema, table, batch -> {
+            if (Objects.nonNull(consumer)) {
+                for (String t : batch) {
+                    consumer.accept(t);
+                }
+            }
+        }, 1000);
     }
 
 }
