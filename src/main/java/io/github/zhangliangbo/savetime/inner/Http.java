@@ -127,7 +127,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode get(String key, String url, Map<String, Object> query) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return get(key, url, query, header);
     }
 
@@ -140,15 +140,15 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
             return;
         }
         if (header == null || !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
-            request.bodyString(ST.io.toJson(body), null);
+            request.bodyString(ST.io.toJson(body), ContentType.APPLICATION_JSON);
             return;
         }
-        ContentType contentType = ContentType.create(header.get(HttpHeaders.CONTENT_TYPE));
-        if (ContentType.APPLICATION_JSON.getMimeType().equals(contentType.getMimeType())) {
-            request.bodyString(ST.io.toJson(body), null);
+        String contentType = header.get(HttpHeaders.CONTENT_TYPE);
+        if (contentType.startsWith(ContentType.APPLICATION_JSON.getMimeType())) {
+            request.bodyString(ST.io.toJson(body), ContentType.APPLICATION_JSON);
             return;
         }
-        if (ContentType.APPLICATION_FORM_URLENCODED.getMimeType().equals(contentType.getMimeType())) {
+        if (contentType.startsWith(ContentType.APPLICATION_FORM_URLENCODED.getMimeType())) {
             JsonNode jsonNode = ST.io.toJsonNode(body);
             if (!(jsonNode instanceof ObjectNode)) {
                 return;
@@ -185,7 +185,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     private void assignDefaultContentType(Method method, Map<String, String> header) {
         boolean mayHaveBody = Stream.of(Method.POST, Method.PUT).anyMatch(t -> t == method);
         if (mayHaveBody && !header.containsKey(HttpHeaders.CONTENT_TYPE)) {
-            header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
+            header.put(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString());
         }
     }
 
@@ -199,7 +199,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode post(String key, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return post(key, url, query, body, header);
     }
 
@@ -226,7 +226,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode postToken(JsonNode env, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return postToken(env, url, query, body, header);
     }
 
@@ -261,7 +261,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode put(String key, String url, Map<String, Object> query, Object body) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return put(key, url, query, body, header);
     }
 
@@ -282,7 +282,7 @@ public class Http extends AbstractConfigurable<Triple<JsonNode, String, Long>> {
     }
 
     public JsonNode delete(String key, String url, Map<String, Object> query) throws Exception {
-        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType()).toJavaMap();
+        LinkedHashMap<String, String> header = io.vavr.collection.LinkedHashMap.of(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()).toJavaMap();
         return delete(key, url, query, header);
     }
 
