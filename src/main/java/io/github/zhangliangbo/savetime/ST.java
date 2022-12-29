@@ -25,6 +25,7 @@ public final class ST {
     public static final Rabbit rabbit = new Rabbit();
     public static final Rand rand = new Rand();
     public static final MybatisPlusGenerator mybatisPlusGenerator = new MybatisPlusGenerator();
+    public static final Vonage vonage = new Vonage();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
