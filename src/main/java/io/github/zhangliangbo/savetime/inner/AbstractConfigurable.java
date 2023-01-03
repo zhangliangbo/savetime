@@ -33,8 +33,14 @@ public abstract class AbstractConfigurable<T> implements Configurable<T> {
         if (Objects.nonNull(t) && isValid(t)) {
             return t;
         }
-        t = create(key);
-        cache.put(key, t);
+        synchronized (this) {
+            t = cache.get(key);
+            if (Objects.nonNull(t) && isValid(t)) {
+                return t;
+            }
+            t = create(key);
+            cache.put(key, t);
+        }
         return t;
     }
 
