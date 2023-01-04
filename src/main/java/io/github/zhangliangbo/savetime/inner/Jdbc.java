@@ -20,6 +20,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author zhangliangbo
@@ -388,6 +389,33 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                         }
                 )
                 .reduce(0L, Long::sum);
+    }
+
+    /**
+     * 并行查询多个表记录总数，快
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param tables 表格
+     * @return 变量信息
+     */
+    public Map<String, List<Object>> countTableParallel(String key, String schema, String... tables) throws Exception {
+        List<Map<String, Object>> list = Stream.of(tables).parallel()
+                .map(t -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("table", t);
+                    Long count;
+                    try {
+                        count = (Long) count(key, schema, t);
+                    } catch (Exception e) {
+                        System.out.printf("查询数量报错 %s %s %s %s%n", key, schema, t, e);
+                        count = 0L;
+                    }
+                    map.put("count", count);
+                    return map;
+                })
+                .collect(Collectors.toList());
+        return toMap(list);
     }
 
     /**
