@@ -369,7 +369,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     }
 
     /**
-     * 查询记录总数
+     * 并行查询记录总数，快
      *
      * @param key    环境
      * @param schema 数据库
@@ -378,6 +378,28 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      */
     public Object countTableLikeParallel(String key, String schema, String table) throws Exception {
         return showTableLike(key, schema, table).stream().parallel()
+                .map(t -> {
+                            try {
+                                return (Long) count(key, schema, (String) t);
+                            } catch (Exception e) {
+                                System.out.printf("查询数量报错 %s %s %s %s%n", key, schema, t, e);
+                                return 0L;
+                            }
+                        }
+                )
+                .reduce(0L, Long::sum);
+    }
+
+    /**
+     * 查询记录总数，有序
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Object countTableLike(String key, String schema, String table) throws Exception {
+        return showTableLike(key, schema, table).stream()
                 .map(t -> {
                             try {
                                 Long res = (Long) count(key, schema, (String) t);
@@ -418,7 +440,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     }
 
     /**
-     * 查询记录总数
+     * 并行查询记录总数，快
      *
      * @param key    环境
      * @param schema 数据库
@@ -427,6 +449,34 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      */
     public Map<String, List<Object>> truncateTableLikeParallel(String key, String schema, String table) throws Exception {
         List<Map<String, Object>> result = showTableLike(key, schema, table).stream().parallel()
+                .map(t -> {
+                            Map<String, Object> map = new LinkedHashMap<>();
+                            map.put("table", t);
+                            try {
+                                int res = truncate(key, schema, (String) t);
+                                map.put("result", res);
+                            } catch (Exception e) {
+                                System.out.printf("清空报错 %s %s %s %s%n", key, schema, t, e);
+                                map.put("result", -1);
+                            }
+
+                            return map;
+                        }
+                )
+                .collect(Collectors.toList());
+        return toMap(result);
+    }
+
+    /**
+     * 查询记录总数，有序
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 变量信息
+     */
+    public Map<String, List<Object>> truncateTableLike(String key, String schema, String table) throws Exception {
+        List<Map<String, Object>> result = showTableLike(key, schema, table).stream()
                 .map(t -> {
                             Map<String, Object> map = new LinkedHashMap<>();
                             map.put("table", t);
