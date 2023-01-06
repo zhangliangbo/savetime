@@ -490,4 +490,8 @@ public class IO {
         }
     }
 
+    public boolean deleteQuietly(File file) {
+        return FileUtils.deleteQuietly(file);
+    }
+
 }
