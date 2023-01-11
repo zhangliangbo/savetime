@@ -21,6 +21,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.imageio.ImageIO;
@@ -490,8 +491,38 @@ public class IO {
         }
     }
 
+    /**
+     * 删文件或者文件夹，不抛异常
+     *
+     * @param file 文件
+     * @return 成功与否
+     */
     public boolean deleteQuietly(File file) {
         return FileUtils.deleteQuietly(file);
+    }
+
+    /**
+     * 导出csv
+     *
+     * @param file 文件
+     * @param a    数组
+     * @return 是否成功
+     * @throws IOException 异常
+     */
+    public boolean exportCsv(File file, int[][] a) throws IOException {
+        if (file.exists() || ArrayUtils.isEmpty(a)) {
+            return false;
+        }
+        int[] first = a[0];
+        StringJoiner joiner = new StringJoiner(",");
+        for (int i = 1; i < first.length; i++) {
+            joiner.add(String.valueOf(i));
+        }
+        appendFile(file, joiner.toString());
+        for (int[] ints : a) {
+            appendFile(file, Arrays.toString(ints));
+        }
+        return true;
     }
 
 }
