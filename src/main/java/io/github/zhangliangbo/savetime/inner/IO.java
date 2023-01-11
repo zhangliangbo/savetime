@@ -515,7 +515,7 @@ public class IO {
         }
         int[] first = a[0];
         StringJoiner joiner = new StringJoiner(",");
-        for (int i = 1; i < first.length; i++) {
+        for (int i = 0; i < first.length; i++) {
             joiner.add(String.valueOf(i));
         }
         appendFile(file, joiner + "\n");
