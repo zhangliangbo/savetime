@@ -518,9 +518,13 @@ public class IO {
         for (int i = 1; i < first.length; i++) {
             joiner.add(String.valueOf(i));
         }
-        appendFile(file, joiner.toString() + "\n");
+        appendFile(file, joiner + "\n");
         for (int[] ints : a) {
-            appendFile(file, Arrays.toString(ints) + "\n");
+            joiner = new StringJoiner(",");
+            for (int ai : ints) {
+                joiner.add(String.valueOf(ai));
+            }
+            appendFile(file, joiner + "\n");
         }
         return true;
     }
