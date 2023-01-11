@@ -17,7 +17,6 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <jackson.version>2.10.4</jackson.version>
-    <dl.version>1.0.0-M2.1</dl.version>
   </properties>
 
   <dependencies>
@@ -151,16 +150,6 @@
       <groupId>com.rabbitmq</groupId>
       <artifactId>amqp-client</artifactId>
       <version>5.4.3</version>
-    </dependency>
-    <dependency>
-      <groupId>org.nd4j</groupId>
-      <artifactId>nd4j-native-platform</artifactId>
-      <version>${dl.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.deeplearning4j</groupId>
-      <artifactId>deeplearning4j-core</artifactId>
-      <version>${dl.version}</version>
     </dependency>
     <dependency>
       <groupId>com.baomidou</groupId>
