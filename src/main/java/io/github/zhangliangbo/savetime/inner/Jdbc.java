@@ -593,7 +593,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     Object value = entry.getValue();
                     String v;
                     if (value instanceof String) {
-                        v = "'" + value + "'";
+                        v = "'" + ((String) value).replace("'", "''") + "'";
                     } else if (value instanceof java.sql.Timestamp) {
                         v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
                     } else if (value instanceof java.sql.Date) {
