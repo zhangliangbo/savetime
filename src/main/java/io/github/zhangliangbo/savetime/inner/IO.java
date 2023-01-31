@@ -327,6 +327,12 @@ public class IO {
      * @throws IOException 异常
      */
     public void appendFile(File file, String string) throws IOException {
+        File parentFile = file.getParentFile();
+        if (!parentFile.exists()) {
+            if (!parentFile.mkdirs()) {
+                return;
+            }
+        }
         FileOutputStream fileOutputStream = new FileOutputStream(file, true);
         IOUtils.write(string, fileOutputStream, StandardCharsets.UTF_8);
         fileOutputStream.close();
