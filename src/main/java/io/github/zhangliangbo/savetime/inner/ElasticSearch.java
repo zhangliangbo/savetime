@@ -2,25 +2,23 @@ package io.github.zhangliangbo.savetime.inner;
 
 import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.zhangliangbo.savetime.ST;
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.search.*;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.client.core.MainResponse;
@@ -30,9 +28,20 @@ import org.elasticsearch.cluster.health.ClusterShardHealth;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.MatchAllQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.Scroll;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -484,6 +493,76 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         UpdateSettingsRequest request = new UpdateSettingsRequest(index).settings(settings);
         AcknowledgedResponse response = getOrCreate(key).indices().putSettings(request, RequestOptions.DEFAULT);
         return response.isAcknowledged();
+    }
+
+    public boolean export(String key, String index, String[] fields, File file, int pageNum) throws Exception {
+        //设定滚动时间间隔
+        SearchRequest searchRequest = new SearchRequest(index);
+
+        final Scroll scroll = new Scroll(TimeValue.timeValueHours(1L));
+        searchRequest.scroll(scroll);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.size(pageNum);
+        searchSourceBuilder.fetchSource(fields, new String[]{});
+        searchSourceBuilder.trackTotalHits(true);
+        MatchAllQueryBuilder matchAllQueryBuilder = QueryBuilders.matchAllQuery();
+        searchSourceBuilder.query(matchAllQueryBuilder);
+
+        searchRequest.source(searchSourceBuilder);
+
+        SearchResponse searchResponse = getOrCreate(key).search(searchRequest, RequestOptions.DEFAULT);
+        String scrollId = searchResponse.getScrollId();
+        SearchHits responseHits = searchResponse.getHits();
+        SearchHit[] searchHits = responseHits.getHits();
+
+        long total = responseHits.getTotalHits().value;
+        int page = 0;
+        long current = 0L;
+
+        BufferedWriter out = new BufferedWriter(new FileWriter(file, true));
+        System.out.printf("新增scrollId %s %s\n", total, scrollId);
+
+        if (ArrayUtils.isNotEmpty(searchHits)) {
+            current += searchHits.length;
+            System.out.printf("first fetch %s %s %s\n", searchHits.length, ++page, BigDecimal.valueOf(current).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.FLOOR));
+            for (SearchHit searchHit : searchHits) {
+                String json = searchHit.getSourceAsString();
+                out.write(json);
+                out.write("\n");
+            }
+        }
+
+
+        while (ArrayUtils.isNotEmpty(searchHits)) {
+            SearchScrollRequest searchScrollRequest = new SearchScrollRequest(scrollId);
+            searchScrollRequest.scroll(scroll);
+            searchResponse = getOrCreate(key).scroll(searchScrollRequest, RequestOptions.DEFAULT);
+            scrollId = searchResponse.getScrollId();
+            searchHits = searchResponse.getHits().getHits();
+            if (ArrayUtils.isEmpty(searchHits)) {
+                System.out.println("rest fetch 结束");
+                break;
+            }
+            current += searchHits.length;
+            System.out.printf("rest fetch %s %s %s\n", searchHits.length, ++page, BigDecimal.valueOf(current).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.FLOOR));
+            for (SearchHit searchHit : searchHits) {
+                String json = searchHit.getSourceAsString();
+                out.write(json);
+                out.write("\n");
+            }
+        }
+
+
+        ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
+        clearScrollRequest.addScrollId(scrollId);
+        ClearScrollResponse clearScrollResponse = getOrCreate(key).clearScroll(clearScrollRequest, RequestOptions.DEFAULT);
+        boolean succeeded = clearScrollResponse.isSucceeded();
+        System.out.printf("清除scrollId %s\n", scrollId);
+
+        out.close();
+
+        return succeeded;
     }
 
 }

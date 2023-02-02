@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -186,8 +187,8 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         return objectNode;
     }
 
-    public Integer lastBuildNumber(String key, String job) throws Exception {
-        return getOrCreate(key).api().jobsApi().lastBuildNumber(StringUtils.EMPTY, job);
+    public int lastBuildNumber(String key, String job) throws Exception {
+        return Optional.ofNullable(getOrCreate(key).api().jobsApi().lastBuildNumber(StringUtils.EMPTY, job)).orElse(0);
     }
 
     public String lastBuildTimestamp(String key, String job) throws Exception {
@@ -196,7 +197,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
 
     public JsonNode buildJobWithParametersSync(String key, String job, Map<String, List<String>> map, int checkInterval, boolean closeBefore, int times) throws Exception {
         if (closeBefore) {
-            Integer lastBuildNumber = lastBuildNumber(key, job);
+            int lastBuildNumber = lastBuildNumber(key, job);
             while (true) {
                 JsonNode jsonNode = buildInfo(key, job, lastBuildNumber);
                 JsonNode buildingNode = jsonNode.get("building");
@@ -213,7 +214,7 @@ public class JenkinsRest extends AbstractConfigurable<JenkinsClient> {
         int queueId = buildJob.get("value").asInt();
         System.out.printf("%s %s%n", job, buildJob);
         //等待任务开始
-        Integer lastBuildNumber;
+        int lastBuildNumber;
         while (true) {
             lastBuildNumber = lastBuildNumber(key, job);
             JsonNode buildInfo = buildInfo(key, job, lastBuildNumber);
