@@ -4,8 +4,10 @@ import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Stopwatch;
 import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -43,6 +45,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -495,15 +498,29 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         return response.isAcknowledged();
     }
 
-    public boolean export(String key, String index, String[] fields, File file, int pageNum) throws Exception {
-        //设定滚动时间间隔
+    public Triple<Long, Boolean, Duration> exportPage(String key, String index, String[] fields, File file, Integer from, Integer size) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+
         SearchRequest searchRequest = new SearchRequest(index);
 
         final Scroll scroll = new Scroll(TimeValue.timeValueHours(1L));
         searchRequest.scroll(scroll);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.size(pageNum);
+        boolean partQuery = false;
+        if (Objects.nonNull(from)) {
+            searchSourceBuilder.from(from);
+            partQuery = true;
+        }
+        //每个scroll固定1000
+        int pageNum = 1000;
+        if (partQuery && Objects.nonNull(size) && size < pageNum) {
+            //如果要查询的数据比固定数量小
+            searchSourceBuilder.size(size);
+        } else {
+            searchSourceBuilder.size(pageNum);
+        }
+
         searchSourceBuilder.fetchSource(fields, new String[]{});
         searchSourceBuilder.trackTotalHits(true);
         MatchAllQueryBuilder matchAllQueryBuilder = QueryBuilders.matchAllQuery();
@@ -516,7 +533,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         SearchHits responseHits = searchResponse.getHits();
         SearchHit[] searchHits = responseHits.getHits();
 
-        long total = responseHits.getTotalHits().value;
+        long total = partQuery && Objects.nonNull(size) ? size : responseHits.getTotalHits().value;
         int page = 0;
         long current = 0L;
 
@@ -533,23 +550,26 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
             }
         }
 
-
-        while (ArrayUtils.isNotEmpty(searchHits)) {
-            SearchScrollRequest searchScrollRequest = new SearchScrollRequest(scrollId);
-            searchScrollRequest.scroll(scroll);
-            searchResponse = getOrCreate(key).scroll(searchScrollRequest, RequestOptions.DEFAULT);
-            scrollId = searchResponse.getScrollId();
-            searchHits = searchResponse.getHits().getHits();
-            if (ArrayUtils.isEmpty(searchHits)) {
-                System.out.println("rest fetch 结束");
-                break;
-            }
-            current += searchHits.length;
-            System.out.printf("rest fetch %s %s %s\n", searchHits.length, ++page, BigDecimal.valueOf(current).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.FLOOR));
-            for (SearchHit searchHit : searchHits) {
-                String json = searchHit.getSourceAsString();
-                out.write(json);
-                out.write("\n");
+        boolean finish = partQuery && Objects.nonNull(size) && current >= size;
+        if (!finish) {
+            while (ArrayUtils.isNotEmpty(searchHits)) {
+                SearchScrollRequest searchScrollRequest = new SearchScrollRequest(scrollId);
+                searchScrollRequest.scroll(scroll);
+                searchResponse = getOrCreate(key).scroll(searchScrollRequest, RequestOptions.DEFAULT);
+                scrollId = searchResponse.getScrollId();
+                searchHits = searchResponse.getHits().getHits();
+                finish = partQuery && Objects.nonNull(size) && current >= size;
+                if (ArrayUtils.isEmpty(searchHits) || finish) {
+                    System.out.println("rest fetch 结束");
+                    break;
+                }
+                current += searchHits.length;
+                System.out.printf("rest fetch %s %s %s\n", searchHits.length, ++page, BigDecimal.valueOf(current).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.FLOOR));
+                for (SearchHit searchHit : searchHits) {
+                    String json = searchHit.getSourceAsString();
+                    out.write(json);
+                    out.write("\n");
+                }
             }
         }
 
@@ -562,7 +582,12 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
 
         out.close();
 
-        return succeeded;
+        return Triple.of(total, succeeded, sw.stop().elapsed());
+    }
+
+
+    public Triple<Long, Boolean, Duration> export(String key, String index, String[] fields, File file) throws Exception {
+        return exportPage(key, index, fields, file, null, null);
     }
 
 }
