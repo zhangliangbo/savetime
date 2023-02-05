@@ -3,8 +3,9 @@ package io.github.zhangliangbo.savetime.inner;
 import io.github.zhangliangbo.savetime.inner.netty.ServerUtil;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoClientHandler;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoServerHandler;
-import io.github.zhangliangbo.savetime.inner.netty.snoop.HttpSnoopClientInitializer;
-import io.github.zhangliangbo.savetime.inner.netty.snoop.HttpSnoopServerInitializer;
+import io.github.zhangliangbo.savetime.inner.netty.http.file.HttpStaticFileServerInitializer;
+import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopClientInitializer;
+import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopServerInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * https://netty.io/wiki/index.html
+ * https://github.com/netty/netty
  *
  * @author zhangliangbo
  * @since 2022-10-15
@@ -214,6 +216,35 @@ public class Netty {
             //关闭所有的执行线程以退出
             group.shutdownGracefully();
         }
+    }
+
+    public CompletableFuture<Void> httpStaticFileServer(int port, boolean ssl) {
+        return CompletableFuture.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+                EventLoopGroup workerGroup = new NioEventLoopGroup();
+                try {
+                    final SslContext sslCtx = ServerUtil.buildSslContext();
+                    ServerBootstrap b = new ServerBootstrap();
+                    b.group(bossGroup, workerGroup)
+                            .channel(NioServerSocketChannel.class)
+                            .handler(new LoggingHandler(LogLevel.INFO))
+                            .childHandler(new HttpStaticFileServerInitializer(sslCtx));
+
+                    Channel ch = b.bind(port).sync().channel();
+
+                    log.info("打开浏览器并导航到{}://127.0.0.1:{}/", (ssl ? "https" : "http"), port);
+
+                    ch.closeFuture().sync();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e.getMessage());
+                } finally {
+                    bossGroup.shutdownGracefully();
+                    workerGroup.shutdownGracefully();
+                }
+            }
+        });
     }
 
 }

@@ -1,4 +1,4 @@
-package io.github.zhangliangbo.savetime.inner.netty.snoop;
+package io.github.zhangliangbo.savetime.inner.netty.http.snoop;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
