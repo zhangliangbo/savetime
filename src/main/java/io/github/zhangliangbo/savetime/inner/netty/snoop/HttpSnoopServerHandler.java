@@ -26,7 +26,7 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> {
     private HttpRequest request;
     /**
-     * Buffer that stores the response content
+     * 存储应答内容的缓冲
      */
     private final StringBuilder buf = new StringBuilder();
 

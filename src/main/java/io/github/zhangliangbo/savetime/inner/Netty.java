@@ -3,20 +3,29 @@ package io.github.zhangliangbo.savetime.inner;
 import io.github.zhangliangbo.savetime.inner.netty.ServerUtil;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoClientHandler;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoServerHandler;
+import io.github.zhangliangbo.savetime.inner.netty.snoop.HttpSnoopClientInitializer;
 import io.github.zhangliangbo.savetime.inner.netty.snoop.HttpSnoopServerInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.net.ssl.SSLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.cert.CertificateException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -158,6 +167,53 @@ public class Netty {
                 }
             }
         });
+    }
+
+    public void snoopClient(String url) throws URISyntaxException, SSLException, InterruptedException {
+        URI uri = new URI(url);
+        //必要的话配置SSL上下文
+        final boolean ssl = "https".equalsIgnoreCase(uri.getScheme());
+        final SslContext sslCtx;
+        if (ssl) {
+            sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+        } else {
+            sslCtx = null;
+        }
+
+        //配置客户端
+        EventLoopGroup group = new NioEventLoopGroup();
+        try {
+            Bootstrap b = new Bootstrap();
+            b.group(group)
+                    .channel(NioSocketChannel.class)
+                    .handler(new HttpSnoopClientInitializer(sslCtx));
+
+            //尝试建立连接
+            ChannelFuture f = b.connect(uri.getHost(), uri.getPort()).sync();
+
+            //准备HTTP请求
+            HttpRequest request = new DefaultFullHttpRequest(
+                    HttpVersion.HTTP_1_1, HttpMethod.GET, uri.getRawPath(), Unpooled.EMPTY_BUFFER);
+            request.headers().set(HttpHeaderNames.HOST, uri.getHost());
+            request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+            request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
+
+            //设置一些文本
+            request.headers().set(
+                    HttpHeaderNames.COOKIE,
+                    ClientCookieEncoder.STRICT.encode(
+                            new DefaultCookie("my-cookie", "foo"),
+                            new DefaultCookie("another-cookie", "bar")));
+
+            //发送HTTP请求
+            f.channel().writeAndFlush(request);
+
+            //等待服务器关闭连接
+            f.channel().closeFuture().sync();
+        } finally {
+            //关闭所有的执行线程以退出
+            group.shutdownGracefully();
+        }
     }
 
 }
