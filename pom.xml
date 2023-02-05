@@ -18,6 +18,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
     <jackson.version>2.10.4</jackson.version>
     <logback.version>1.2.11</logback.version>
+    <netty.version>4.1.72.Final</netty.version>
   </properties>
 
   <dependencies>
@@ -189,6 +190,12 @@
       <artifactId>logback-classic</artifactId>
       <version>${logback.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+
   </dependencies>
 
   <distributionManagement>

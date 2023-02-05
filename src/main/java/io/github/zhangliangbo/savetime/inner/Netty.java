@@ -3,6 +3,7 @@ package io.github.zhangliangbo.savetime.inner;
 import io.github.zhangliangbo.savetime.inner.netty.ServerUtil;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoClientHandler;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoServerHandler;
+import io.github.zhangliangbo.savetime.inner.netty.snoop.HttpSnoopServerInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -116,6 +117,41 @@ public class Netty {
                     } finally {
                         //关闭消息循环以终止所有线程
                         group.shutdownGracefully();
+                    }
+                } catch (Exception e) {
+                    throw new IllegalStateException(e.getMessage());
+                }
+            }
+        });
+    }
+
+    public CompletableFuture<Void> snoopServer(int port, boolean ssl) {
+        return CompletableFuture.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //配置SSL
+                    final SslContext sslCtx = ServerUtil.buildSslContext();
+
+                    //配置服务器
+                    EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+                    EventLoopGroup workerGroup = new NioEventLoopGroup();
+                    try {
+                        ServerBootstrap b = new ServerBootstrap();
+                        b.group(bossGroup, workerGroup)
+                                .channel(NioServerSocketChannel.class)
+                                .handler(new LoggingHandler(LogLevel.INFO))
+                                .childHandler(new HttpSnoopServerInitializer(sslCtx));
+
+                        ChannelFuture f = b.bind(port).sync();
+
+                        log.info("打开浏览器并导航到{}://127.0.0.1:{}/", (ssl ? "https" : "http"), port);
+
+                        f.channel().closeFuture().sync();
+
+                    } finally {
+                        bossGroup.shutdownGracefully();
+                        workerGroup.shutdownGracefully();
                     }
                 } catch (Exception e) {
                     throw new IllegalStateException(e.getMessage());
