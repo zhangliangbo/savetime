@@ -4,9 +4,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.DefaultEventLoopGroup;
+import io.netty.channel.EventLoopGroup;
 import io.netty.util.CharsetUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,21 +19,29 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class EchoClientHandler extends ChannelInboundHandlerAdapter {
 
+    private final EventLoopGroup handler = new DefaultEventLoopGroup();
+
+    private final BlockingQueue<String> blockingQueue;
+
+    public EchoClientHandler(BlockingQueue<String> blockingQueue) {
+        this.blockingQueue = blockingQueue;
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
-        ctx.executor().execute(new Runnable() {
+        handler.execute(new Runnable() {
             @Override
             public void run() {
-                ctx.writeAndFlush(Unpooled.copiedBuffer("Hello", CharsetUtil.UTF_8));
-                log.info("睡眠开始");
-                try {
-                    TimeUnit.SECONDS.sleep(10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                while (true) {
+                    try {
+                        String take = blockingQueue.take();
+                        log.info("发送 {}", take);
+                        ctx.writeAndFlush(Unpooled.copiedBuffer(take, CharsetUtil.UTF_8));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
-                log.info("睡眠结束");
-                ctx.writeAndFlush(Unpooled.copiedBuffer("World", CharsetUtil.UTF_8));
             }
         });
     }

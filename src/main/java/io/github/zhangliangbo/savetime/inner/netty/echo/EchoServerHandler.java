@@ -18,7 +18,8 @@ public class EchoServerHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof ByteBuf) {
-            log.info("{}={}", msg.getClass().getName(), ((ByteBuf) msg).toString(CharsetUtil.UTF_8));
+            String s = ((ByteBuf) msg).toString(CharsetUtil.UTF_8);
+            log.info("{}={}", msg.getClass().getName(), s);
         }
         ctx.write(msg);
     }
