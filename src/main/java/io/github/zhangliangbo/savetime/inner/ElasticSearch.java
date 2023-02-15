@@ -33,6 +33,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -588,6 +590,23 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
 
     public Triple<Long, Boolean, Duration> export(String key, String index, String[] fields, File file) throws Exception {
         return exportPage(key, index, fields, file, null, null);
+    }
+
+    public JsonNode reindex(String key, String source, String destination, int batchSize) throws Exception {
+        ReindexRequest reindexRequest = new ReindexRequest();
+        reindexRequest.setSourceIndices(source);
+        reindexRequest.setSourceBatchSize(batchSize);
+        reindexRequest.setDestIndex(destination);
+        BulkByScrollResponse response = getOrCreate(key).reindex(reindexRequest, RequestOptions.DEFAULT);
+
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("status", response.getStatus().toString());
+        objectNode.put("batches", response.getBatches());
+        return objectNode;
+    }
+
+    public JsonNode reindex(String key, String source, String destination) throws Exception {
+        return reindex(key, source, destination, 1000);
     }
 
 }
