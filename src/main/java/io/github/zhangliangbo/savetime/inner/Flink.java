@@ -3,10 +3,13 @@ package io.github.zhangliangbo.savetime.inner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.google.common.base.Stopwatch;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.net.URLEncoder;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -105,7 +108,9 @@ public class Flink extends Http {
         return get(key, path);
     }
 
-    public String uploadRunCancel(String key, File file, String name, String entryClass, String programArgs) throws Exception {
+    public Pair<String, Duration> uploadRunCancel(String key, File file, String name, String entryClass, String programArgs) throws Exception {
+        Stopwatch stopwatch = Stopwatch.createStarted();
+
         System.out.println("开始上传jar");
         JsonNode jsonNode = jarUpload(key, file);
         String status = jsonNode.get("status").asText();
@@ -122,10 +127,14 @@ public class Flink extends Http {
         ArrayNode oldJobs = jobsByName(key, name);
         for (JsonNode oldJob : oldJobs) {
             String jid = oldJob.get("jid").asText();
+            if (Objects.equals(jid, jobId)) {
+                continue;
+            }
             jsonNode = jobCancel(key, jid);
             System.out.printf("取消旧程序结果 %s %s\n", jid, jsonNode);
         }
-        return jobId;
+
+        return Pair.of(jobId, stopwatch.elapsed());
     }
 
 }
