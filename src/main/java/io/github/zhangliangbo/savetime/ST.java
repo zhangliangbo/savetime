@@ -28,6 +28,7 @@ public final class ST {
     public static final Vonage vonage = new Vonage();
     public static final Thymeleaf thymeleaf = new Thymeleaf();
     public static final Netty netty = new Netty();
+    public static final Flink flink = new Flink();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
