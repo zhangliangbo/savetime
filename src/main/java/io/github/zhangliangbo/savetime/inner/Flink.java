@@ -37,7 +37,7 @@ public class Flink extends Http {
      * @return 应答
      * @throws Exception 异常
      */
-    public JsonNode jobsByName(String key, String name) throws Exception {
+    public ArrayNode jobsByName(String key, String name) throws Exception {
         JsonNode jsonNode = get(key, "/jobs/overview");
 
         ArrayNode result = new ArrayNode(JsonNodeFactory.instance);
@@ -87,8 +87,8 @@ public class Flink extends Http {
         query.put("entry-class", entryClass);
         query.put("program-args", URLEncoder.encode(programArgs, "UTF-8"));
         Map<String, Object> body = new LinkedHashMap<>();
-        query.put("entryClass", entryClass);
-        query.put("programArgs", programArgs);
+        body.put("entryClass", entryClass);
+        body.put("programArgs", programArgs);
         String path = String.format("/jars/%s/run", FilenameUtils.getName(fileName));
         return post(key, path, query, body);
     }
@@ -103,6 +103,29 @@ public class Flink extends Http {
     public JsonNode jobCancel(String key, String jobId) throws Exception {
         String path = String.format("/jobs/%s/yarn-cancel", jobId);
         return get(key, path);
+    }
+
+    public String uploadRunCancel(String key, File file, String name, String entryClass, String programArgs) throws Exception {
+        System.out.println("开始上传jar");
+        JsonNode jsonNode = jarUpload(key, file);
+        String status = jsonNode.get("status").asText();
+        if (!Objects.equals(status, "success")) {
+            throw new Exception("上传Jar报错");
+        }
+        String fileName = jsonNode.get("filename").asText();
+        System.out.printf("jar上传完毕 %s\n", fileName);
+        System.out.printf("运行程序开始 %s %s\n", entryClass, programArgs);
+        jsonNode = jarRun(key, fileName, entryClass, programArgs);
+        String jobId = jsonNode.get("jobid").asText();
+        System.out.printf("运行程序结果 %s\n", jobId);
+        System.out.println("取消旧程序开始");
+        ArrayNode oldJobs = jobsByName(key, name);
+        for (JsonNode oldJob : oldJobs) {
+            String jid = oldJob.get("jid").asText();
+            jsonNode = jobCancel(key, jid);
+            System.out.printf("取消旧程序结果 %s %s\n", jid, jsonNode);
+        }
+        return jobId;
     }
 
 }
