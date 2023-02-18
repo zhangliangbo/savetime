@@ -127,7 +127,8 @@ public class Flink extends Http {
         ArrayNode oldJobs = jobsByName(key, name);
         for (JsonNode oldJob : oldJobs) {
             String jid = oldJob.get("jid").asText();
-            if (Objects.equals(jid, jobId)) {
+            String state = oldJob.get("state").asText();
+            if (Objects.equals(jid, jobId) || !Objects.equals(state, "RUNNING")) {
                 continue;
             }
             jsonNode = jobCancel(key, jid);
