@@ -6,6 +6,6 @@ package io.github.zhangliangbo.savetime;
  */
 public class ServerSide {
     public static void main(String[] args) {
-        ST.netty.httpHelloWorldServer(9999, false).join();
+        ST.netty.httpUploadServer(9999, false).join();
     }
 }

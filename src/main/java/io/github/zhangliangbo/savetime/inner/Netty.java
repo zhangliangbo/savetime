@@ -7,6 +7,7 @@ import io.github.zhangliangbo.savetime.inner.netty.http.file.HttpStaticFileServe
 import io.github.zhangliangbo.savetime.inner.netty.http.helloworld.HttpHelloWorldServerInitializer;
 import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopClientInitializer;
 import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopServerInitializer;
+import io.github.zhangliangbo.savetime.inner.netty.http.upload.HttpUploadServerInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
@@ -264,6 +265,37 @@ public class Netty {
                             .channel(NioServerSocketChannel.class)
                             .handler(new LoggingHandler(LogLevel.INFO))
                             .childHandler(new HttpHelloWorldServerInitializer(sslCtx));
+
+                    Channel ch = b.bind(port).sync().channel();
+
+                    System.err.println("Open your web browser and navigate to " +
+                            (ssl ? "https" : "http") + "://127.0.0.1:" + port + '/');
+
+                    ch.closeFuture().sync();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e.getMessage());
+                } finally {
+                    bossGroup.shutdownGracefully();
+                    workerGroup.shutdownGracefully();
+                }
+            }
+        });
+    }
+
+    public CompletableFuture<Void> httpUploadServer(int port, boolean ssl) {
+        return CompletableFuture.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+                EventLoopGroup workerGroup = new NioEventLoopGroup();
+                try {
+                    // Configure SSL.
+                    final SslContext sslCtx = ServerUtil.buildSslContext();
+                    ServerBootstrap b = new ServerBootstrap();
+                    b.group(bossGroup, workerGroup);
+                    b.channel(NioServerSocketChannel.class);
+                    b.handler(new LoggingHandler(LogLevel.INFO));
+                    b.childHandler(new HttpUploadServerInitializer(sslCtx));
 
                     Channel ch = b.bind(port).sync().channel();
 
