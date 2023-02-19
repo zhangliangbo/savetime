@@ -4,6 +4,7 @@ import io.github.zhangliangbo.savetime.inner.netty.ServerUtil;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoClientHandler;
 import io.github.zhangliangbo.savetime.inner.netty.echo.EchoServerHandler;
 import io.github.zhangliangbo.savetime.inner.netty.http.file.HttpStaticFileServerInitializer;
+import io.github.zhangliangbo.savetime.inner.netty.http.helloworld.HttpHelloWorldServerInitializer;
 import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopClientInitializer;
 import io.github.zhangliangbo.savetime.inner.netty.http.snoop.HttpSnoopServerInitializer;
 import io.netty.bootstrap.Bootstrap;
@@ -136,7 +137,7 @@ public class Netty {
         });
     }
 
-    public CompletableFuture<Void> snoopServer(int port, boolean ssl) {
+    public CompletableFuture<Void> httpSnoopServer(int port, boolean ssl) {
         return CompletableFuture.runAsync(new Runnable() {
             @Override
             public void run() {
@@ -171,7 +172,7 @@ public class Netty {
         });
     }
 
-    public void snoopClient(String url) throws URISyntaxException, SSLException, InterruptedException {
+    public void httpSnoopClient(String url) throws URISyntaxException, SSLException, InterruptedException {
         URI uri = new URI(url);
         //必要的话配置SSL上下文
         final boolean ssl = "https".equalsIgnoreCase(uri.getScheme());
@@ -235,6 +236,39 @@ public class Netty {
                     Channel ch = b.bind(port).sync().channel();
 
                     log.info("打开浏览器并导航到{}://127.0.0.1:{}/", (ssl ? "https" : "http"), port);
+
+                    ch.closeFuture().sync();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e.getMessage());
+                } finally {
+                    bossGroup.shutdownGracefully();
+                    workerGroup.shutdownGracefully();
+                }
+            }
+        });
+    }
+
+    public CompletableFuture<Void> httpHelloWorldServer(int port, boolean ssl) {
+        return CompletableFuture.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                // Configure the server.
+                EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+                EventLoopGroup workerGroup = new NioEventLoopGroup();
+                try {
+                    // Configure SSL.
+                    final SslContext sslCtx = ServerUtil.buildSslContext();
+                    ServerBootstrap b = new ServerBootstrap();
+                    b.option(ChannelOption.SO_BACKLOG, 1024);
+                    b.group(bossGroup, workerGroup)
+                            .channel(NioServerSocketChannel.class)
+                            .handler(new LoggingHandler(LogLevel.INFO))
+                            .childHandler(new HttpHelloWorldServerInitializer(sslCtx));
+
+                    Channel ch = b.bind(port).sync().channel();
+
+                    System.err.println("Open your web browser and navigate to " +
+                            (ssl ? "https" : "http") + "://127.0.0.1:" + port + '/');
 
                     ch.closeFuture().sync();
                 } catch (Exception e) {
