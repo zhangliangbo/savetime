@@ -583,29 +583,9 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             }
 
             List<String> sqlList = new LinkedList<>();
-            String insertSql = "insert into %s %s values %s;";
 
             for (Map<String, Object> record : page) {
-                StringJoiner keyJoiner = new StringJoiner(",", "(", ")");
-                StringJoiner valueJoiner = new StringJoiner(",", "(", ")");
-                for (Map.Entry<String, Object> entry : record.entrySet()) {
-                    keyJoiner.add(entry.getKey());
-                    Object value = entry.getValue();
-                    String v;
-                    if (value instanceof String) {
-                        v = "'" + ((String) value).replace("'", "''") + "'";
-                    } else if (value instanceof java.sql.Timestamp) {
-                        v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
-                    } else if (value instanceof java.sql.Date) {
-                        v = "'" + DateFormatUtils.format((java.sql.Date) value, "yyyy-MM-dd") + "'";
-                    } else if (value instanceof java.sql.Time) {
-                        v = "'" + DateFormatUtils.format((java.sql.Time) value, "HH:mm:ss") + "'";
-                    } else {
-                        v = Objects.isNull(value) ? "null" : value.toString();
-                    }
-                    valueJoiner.add(v);
-                }
-                String format = String.format(insertSql, table, keyJoiner, valueJoiner);
+                String format = toInsertSql(table, record);
                 sqlList.add(format);
             }
 
@@ -639,6 +619,38 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 }
             }
         }, 1000);
+    }
+
+    /**
+     * 转成insert语句
+     *
+     * @param table  表格
+     * @param record 记录
+     * @return sql
+     * @throws Exception 异常
+     */
+    public String toInsertSql(String table, Map<String, Object> record) throws Exception {
+        String insertSql = "insert into %s %s values %s;";
+        StringJoiner keyJoiner = new StringJoiner(",", "(", ")");
+        StringJoiner valueJoiner = new StringJoiner(",", "(", ")");
+        for (Map.Entry<String, Object> entry : record.entrySet()) {
+            keyJoiner.add(entry.getKey());
+            Object value = entry.getValue();
+            String v;
+            if (value instanceof String) {
+                v = "'" + ((String) value).replace("'", "''") + "'";
+            } else if (value instanceof java.sql.Timestamp) {
+                v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
+            } else if (value instanceof java.sql.Date) {
+                v = "'" + DateFormatUtils.format((java.sql.Date) value, "yyyy-MM-dd") + "'";
+            } else if (value instanceof java.sql.Time) {
+                v = "'" + DateFormatUtils.format((java.sql.Time) value, "HH:mm:ss") + "'";
+            } else {
+                v = Objects.isNull(value) ? "null" : value.toString();
+            }
+            valueJoiner.add(v);
+        }
+        return String.format(insertSql, table, keyJoiner, valueJoiner);
     }
 
 }
