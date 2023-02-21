@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * /jobs/overview
@@ -123,6 +124,22 @@ public class Flink extends Http {
         jsonNode = jarRun(key, fileName, entryClass, programArgs);
         String jobId = jsonNode.get("jobid").asText();
         System.out.printf("运行程序结果 %s\n", jobId);
+
+        System.out.printf("等待程序启动 %s\n", jobId);
+        while (true) {
+            jsonNode = jobInfo(key, jobId);
+            if (Objects.isNull(jsonNode)) {
+                break;
+            }
+            String state = jsonNode.get("state").asText();
+            if (Objects.equals(state, "RUNNING")) {
+                System.out.printf("等待程序启动 结束 %s\n", jobId);
+                break;
+            }
+            System.out.printf("等待程序启动 未完成 开始睡眠 %s\n", jobId);
+            TimeUnit.SECONDS.sleep(5);
+        }
+
         System.out.println("取消旧程序开始");
         ArrayNode oldJobs = jobsByName(key, name);
         for (JsonNode oldJob : oldJobs) {
@@ -136,6 +153,27 @@ public class Flink extends Http {
         }
 
         return Pair.of(jobId, stopwatch.elapsed());
+    }
+
+    /**
+     * 任务详情
+     *
+     * @param key 环境
+     * @return 应答
+     * @throws Exception 异常
+     */
+    public JsonNode jobInfo(String key, String jobId) throws Exception {
+        JsonNode jsonNode = get(key, "/jobs/overview");
+
+        ArrayNode arrayNode = (ArrayNode) jsonNode.get("jobs");
+        for (JsonNode node : arrayNode) {
+            if (node.has("jid") && Objects.equals(node.get("jid").asText(), jobId)) {
+                return node;
+            }
+        }
+
+        return null;
+
     }
 
 }
