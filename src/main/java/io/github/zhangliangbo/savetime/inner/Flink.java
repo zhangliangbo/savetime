@@ -132,7 +132,9 @@ public class Flink extends Http {
                 break;
             }
             String state = jsonNode.get("state").asText();
-            if (Objects.equals(state, "RUNNING")) {
+            int total = jsonNode.path("tasks").path("total").asInt(0);
+            int running = jsonNode.path("tasks").path("running").asInt(0);
+            if (Objects.equals(state, "RUNNING") && total == running) {
                 System.out.printf("等待程序启动 结束 %s\n", jobId);
                 break;
             }
