@@ -719,7 +719,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
                 tokenNode.set("attributes", ST.io.toJsonNode(token.getAttributes()));
                 tokenNodeArr.add(tokenNode);
             }
-            objectNode.set("token", tokenNodeArr);
+            objectNode.set("tokens", tokenNodeArr);
         }
     }
 
