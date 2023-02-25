@@ -2,11 +2,13 @@ package io.github.zhangliangbo.savetime.inner;
 
 import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -607,6 +609,118 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
 
     public JsonNode reindex(String key, String source, String destination) throws Exception {
         return reindex(key, source, destination, 1000);
+    }
+
+    /**
+     * 分析文本
+     *
+     * @param key          环境
+     * @param index        索引
+     * @param tokenizer    分词器
+     * @param charFilters  字符过滤器
+     * @param tokenFilters 分词过滤器
+     * @param text         文本
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode analyze(String key, String index, String tokenizer, String[] charFilters, String[] tokenFilters, String text) throws Exception {
+        AnalyzeRequest.CustomAnalyzerBuilder builder;
+        if (StringUtils.isBlank(tokenizer)) {
+            builder = AnalyzeRequest.buildCustomNormalizer(index);
+        } else {
+            builder = AnalyzeRequest.buildCustomAnalyzer(index, tokenizer);
+        }
+        if (ArrayUtils.isNotEmpty(charFilters)) {
+            for (String charFilter : charFilters) {
+                builder.addCharFilter(charFilter);
+            }
+        }
+        if (ArrayUtils.isNotEmpty(tokenFilters)) {
+            for (String tokenFilter : tokenFilters) {
+                builder.addTokenFilter(tokenFilter);
+            }
+        }
+        AnalyzeRequest build = builder.build(text);
+        AnalyzeResponse response = getOrCreate(key).indices().analyze(build, RequestOptions.DEFAULT);
+
+        ObjectNode result = new ObjectNode(JsonNodeFactory.instance);
+
+        List<AnalyzeResponse.AnalyzeToken> tokens = response.getTokens();
+        dealToken(result, tokens.toArray(new AnalyzeResponse.AnalyzeToken[0]));
+
+        DetailAnalyzeResponse detailAnalyzeResponse = response.detail();
+        if (Objects.isNull(detailAnalyzeResponse)) {
+            return result;
+        }
+
+        ObjectNode detailNode = new ObjectNode(JsonNodeFactory.instance);
+
+        DetailAnalyzeResponse.AnalyzeTokenList analyzeTokenList = detailAnalyzeResponse.analyzer();
+        if (Objects.nonNull(analyzeTokenList)) {
+            ObjectNode analyzerNode = new ObjectNode(JsonNodeFactory.instance);
+            analyzerNode.put("name", analyzeTokenList.getName());
+            dealToken(analyzerNode, analyzeTokenList.getTokens());
+            detailNode.set("analyzer", analyzerNode);
+        }
+
+        DetailAnalyzeResponse.CharFilteredText[] charfilters = detailAnalyzeResponse.charfilters();
+        if (ArrayUtils.isNotEmpty(charfilters)) {
+            ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
+            for (DetailAnalyzeResponse.CharFilteredText charfilter : charfilters) {
+                ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+                objectNode.put("name", charfilter.getName());
+                String[] texts = charfilter.getTexts();
+                if (ArrayUtils.isNotEmpty(texts)) {
+                    ArrayNode an = new ArrayNode(JsonNodeFactory.instance);
+                    for (String s : texts) {
+                        an.add(s);
+                    }
+                    objectNode.set("texts", an);
+                }
+                arrayNode.add(objectNode);
+            }
+            detailNode.set("charFilters", arrayNode);
+        }
+
+        analyzeTokenList = detailAnalyzeResponse.tokenizer();
+        if (Objects.nonNull(analyzeTokenList)) {
+            ObjectNode tokenizerNode = new ObjectNode(JsonNodeFactory.instance);
+            tokenizerNode.put("name", analyzeTokenList.getName());
+            dealToken(tokenizerNode, analyzeTokenList.getTokens());
+            detailNode.set("analyzer", tokenizerNode);
+        }
+
+        DetailAnalyzeResponse.AnalyzeTokenList[] tokenfilters = detailAnalyzeResponse.tokenfilters();
+        if (ArrayUtils.isNotEmpty(tokenfilters)) {
+            ArrayNode arrayNode = new ArrayNode(JsonNodeFactory.instance);
+            for (DetailAnalyzeResponse.AnalyzeTokenList tokenfilter : tokenfilters) {
+                ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+                objectNode.put("name", tokenfilter.getName());
+                dealToken(objectNode, tokenfilter.getTokens());
+                arrayNode.add(objectNode);
+            }
+            detailNode.set("tokenFilters", arrayNode);
+        }
+
+        return result;
+    }
+
+    private void dealToken(ObjectNode objectNode, AnalyzeResponse.AnalyzeToken[] tokens) {
+        if (ArrayUtils.isNotEmpty(tokens)) {
+            ArrayNode tokenNodeArr = new ArrayNode(JsonNodeFactory.instance);
+            for (AnalyzeResponse.AnalyzeToken token : tokens) {
+                ObjectNode tokenNode = new ObjectNode(JsonNodeFactory.instance);
+                tokenNode.put("term", token.getTerm());
+                tokenNode.put("type", token.getType());
+                tokenNode.put("position", token.getPosition());
+                tokenNode.put("positionLength", token.getPositionLength());
+                tokenNode.put("startOffset", token.getStartOffset());
+                tokenNode.put("endOffset", token.getEndOffset());
+                tokenNode.set("attributes", ST.io.toJsonNode(token.getAttributes()));
+                tokenNodeArr.add(tokenNode);
+            }
+            objectNode.set("token", tokenNodeArr);
+        }
     }
 
 }

@@ -20,6 +20,7 @@ import com.rabbitmq.client.LongString;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -414,6 +415,21 @@ public class IO {
 
         stopwatch.stop();
         return Pair.of(line.get(), stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    /**
+     * excel转csv
+     *
+     * @param batch        批量复制大小
+     * @param excel        excel文件
+     * @param sheetAndHead 表格编号，表头数目，表格编号，表头数目，...
+     * @return 【总数,时间ms】
+     * @throws IOException 异常
+     */
+    public Pair<Long, Long> excelToCsv(int batch, File excel, int... sheetAndHead) throws IOException {
+        String extension = FilenameUtils.getExtension(excel.getAbsolutePath());
+        String csv = excel.getAbsolutePath().replace(extension, "csv");
+        return excelToCsv(new File(csv), batch, excel, sheetAndHead);
     }
 
     public JsonNode toJsonNode(Map<String, Object> map) {
