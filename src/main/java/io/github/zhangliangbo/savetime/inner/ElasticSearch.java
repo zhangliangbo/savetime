@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import io.github.zhangliangbo.savetime.ST;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
@@ -721,6 +722,86 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
             }
             objectNode.set("tokens", tokenNodeArr);
         }
+    }
+
+    /**
+     * 转移索引
+     *
+     * @param key       环境
+     * @param alias     别名
+     * @param mappings  映射
+     * @param settings  设置
+     * @param deleteOld 是否删除旧索引
+     * @return 新索引名称
+     * @throws Exception 异常
+     */
+    public String switchToNew(String key, String alias, Map<String, Object> mappings, Map<String, Object> settings, boolean deleteOld) throws Exception {
+        JsonNode jsonNode = ST.elasticSearch.alias(key, alias);
+        System.out.printf("查询别名结果%s\n", jsonNode);
+        Iterator<String> fieldNames = jsonNode.fieldNames();
+        if (IteratorUtils.isEmpty(fieldNames)) {
+            throw new IllegalStateException(String.format("%s没有相关索引\n", alias));
+        }
+        String oldIndex = IteratorUtils.get(fieldNames, 0);
+        String prefix = alias + "_";
+        String versionStr = oldIndex.replace(prefix, "");
+        int version = Integer.parseInt(versionStr);
+        String newIndex = prefix + (++version);
+        jsonNode = indexCreate(key, newIndex, null, mappings, settings);
+        System.out.printf("创建索引结果%s\n", jsonNode);
+        jsonNode = reindex(key, oldIndex, newIndex);
+        System.out.printf("转移索引结果%s\n", jsonNode);
+        boolean b = aliasMove(key, oldIndex, newIndex, alias);
+        System.out.printf("转移别名结果%s\n", b);
+        if (deleteOld) {
+            b = indexDelete(key, oldIndex);
+            System.out.printf("删除旧索引结果%s\n", b);
+        }
+        return newIndex;
+    }
+
+    /**
+     * 转移索引
+     *
+     * @param key      环境
+     * @param alias    别名
+     * @param mappings 映射
+     * @param settings 设置
+     * @return 新索引名称
+     * @throws Exception 异常
+     */
+    public String switchToNew(String key, String alias, Map<String, Object> mappings, Map<String, Object> settings) throws Exception {
+        return switchToNew(key, alias, mappings, settings, false);
+    }
+
+    /**
+     * 根据别名找索引
+     *
+     * @param key  环境
+     * @param alia 别名
+     * @return 索引
+     * @throws Exception 异常
+     */
+    public JsonNode indexOfAlia(String key, String alia) throws Exception {
+        JsonNode jsonNode = alias(key);
+        Iterator<String> fieldNames = jsonNode.fieldNames();
+        String prefix = alia + "_";
+
+        ObjectNode result = new ObjectNode(JsonNodeFactory.instance);
+        ArrayNode free = new ArrayNode(JsonNodeFactory.instance);
+        while (fieldNames.hasNext()) {
+            String next = fieldNames.next();
+            if (next.startsWith(prefix)) {
+                JsonNode alias = jsonNode.get(next);
+                if (alias.isEmpty()) {
+                    free.add(next);
+                } else {
+                    result.put("use", next);
+                }
+            }
+        }
+        result.set("free", free);
+        return result;
     }
 
 }
