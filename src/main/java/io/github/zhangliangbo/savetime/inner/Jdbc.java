@@ -9,6 +9,7 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
@@ -223,79 +224,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     public Triple<Long, Duration, String> backupParallel(String key, String schema, String table, int parallel, int batchSize, Executor executor) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
         String newTable = createBackupTable(key, schema, table);
-        String sql = insertTableSql(key, schema, newTable);
-        long count = Long.parseLong(String.valueOf(query(key, schema, "select count(*) from " + table).get("count(*)").get(0)));
-        System.out.println("总数" + count);
-        int portion = count / parallel > 0 ? parallel : 1;
-        System.out.println("份数" + portion);
-        long part = count / parallel + (count % parallel == 0 ? 0 : 1);
-        System.out.println("每份个数" + part);
-        long[] ids = new long[portion + 1];
-        ids[0] = 0;
-        List<CompletableFuture<Void>> completableFutureList = new LinkedList<>();
-        String primary = getPrimaryColumn(key, schema, table);
-        for (int i = 1; i < ids.length; i++) {
-            final int fi = i;
-            Runnable runnable = new Runnable() {
-                @Override
-                public void run() {
-                    System.out.printf("查询ID %s-%s %s%n", fi, ids.length, Thread.currentThread().getName());
-                    try {
-                        if (fi == ids.length - 1) {
-                            String querySql = String.format("select %s from %s order by %s desc limit 1", primary, table, primary);
-                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql).get(primary).get(0)));
-                        } else {
-                            String querySql = String.format("select %s from %s order by %s limit ?,1", primary, table, primary);
-                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql, part * fi - 1).get(primary).get(0)));
-                        }
-                    } catch (Exception e) {
-                        System.out.println("backupParallel报错" + e);
-                    }
-                }
-            };
-            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ? CompletableFuture.runAsync(runnable) :
-                    CompletableFuture.runAsync(runnable, executor);
-            completableFutureList.add(completableFuture);
-        }
-
-        System.out.println("等待所有ID开始");
-        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
-        System.out.println("等待所有ID结束");
-
-        AtomicLong total = new AtomicLong(0);
-        completableFutureList.clear();
-        for (int i = 0; i < ids.length - 1; i++) {
-            long startId = ids[i];
-            long endId = ids[i + 1];
-            Runnable runnable = () -> {
-                System.out.printf("开始任务 %s-%s %s%n", startId, endId, Thread.currentThread().getName());
-                try {
-                    long last = startId;
-                    while (true) {
-                        String querySql = String.format("select * from %s where %s>? and %s<=? order by %s limit ?", table, primary, primary, primary);
-                        List<Map<String, Object>> page = queryList(key, schema, querySql, last, endId, batchSize);
-                        if (page.isEmpty()) {
-                            break;
-                        }
-                        Object[][] args = page.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
-                        int[] r = batchNoRetry(key, schema, sql, args);
-                        long l = total.addAndGet(r.length);
-                        System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
-                        last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
-                    }
-                } catch (Exception e) {
-                    System.out.println("backupParallel报错" + e);
-                }
-            };
-            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ?
-                    CompletableFuture.runAsync(runnable) : CompletableFuture.runAsync(runnable, executor);
-            completableFutureList.add(completableFuture);
-        }
-
-        System.out.println("等待所有任务开始");
-        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
-        System.out.println("等待所有任务结束");
-
+        AtomicLong total = transfer(key, schema, table, key, schema, newTable, parallel, batchSize, executor);
         return Triple.of(total.get(), sw.stop().elapsed(), newTable);
     }
 
@@ -651,6 +580,104 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             valueJoiner.add(v);
         }
         return String.format(insertSql, table, keyJoiner, valueJoiner);
+    }
+
+    /**
+     * 并行转移表格
+     *
+     * @param key          环境
+     * @param schema       数据库
+     * @param table        表
+     * @param keyTarget    目标环境
+     * @param schemaTarget 目标数据库
+     * @param tableTarget  目标表
+     * @param parallel     并行度
+     * @param batchSize    批量大小
+     * @param executor     执行器
+     * @return 【记录条数，耗费时间】
+     * @throws Exception 异常
+     */
+    public Pair<Long, Duration> transferParallel(String key, String schema, String table, String keyTarget, String schemaTarget, String tableTarget, int parallel, int batchSize, Executor executor) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+        AtomicLong total = transfer(key, schema, table, keyTarget, schemaTarget, tableTarget, parallel, batchSize, executor);
+        return Pair.of(total.get(), sw.stop().elapsed());
+    }
+
+    private AtomicLong transfer(String key, String schema, String table, String keyTarget, String schemaTarget, String tableTarget, int parallel, int batchSize, Executor executor) throws Exception {
+        String sql = insertTableSql(keyTarget, schemaTarget, tableTarget);
+        long count = Long.parseLong(String.valueOf(query(key, schema, "select count(*) from " + table).get("count(*)").get(0)));
+        System.out.println("总数" + count);
+        int portion = count / parallel > 0 ? parallel : 1;
+        System.out.println("份数" + portion);
+        long part = count / parallel + (count % parallel == 0 ? 0 : 1);
+        System.out.println("每份个数" + part);
+        long[] ids = new long[portion + 1];
+        ids[0] = 0;
+        List<CompletableFuture<Void>> completableFutureList = new LinkedList<>();
+        String primary = getPrimaryColumn(key, schema, table);
+        for (int i = 1; i < ids.length; i++) {
+            final int fi = i;
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    System.out.printf("查询ID %s-%s %s%n", fi, ids.length, Thread.currentThread().getName());
+                    try {
+                        if (fi == ids.length - 1) {
+                            String querySql = String.format("select %s from %s order by %s desc limit 1", primary, table, primary);
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql).get(primary).get(0)));
+                        } else {
+                            String querySql = String.format("select %s from %s order by %s limit ?,1", primary, table, primary);
+                            ids[fi] = Long.parseLong(String.valueOf(query(key, schema, querySql, part * fi - 1).get(primary).get(0)));
+                        }
+                    } catch (Exception e) {
+                        System.out.println("backupParallel报错" + e);
+                    }
+                }
+            };
+            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ? CompletableFuture.runAsync(runnable) :
+                    CompletableFuture.runAsync(runnable, executor);
+            completableFutureList.add(completableFuture);
+        }
+
+        System.out.println("等待所有ID开始");
+        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
+        System.out.println("等待所有ID结束");
+
+        AtomicLong total = new AtomicLong(0);
+        completableFutureList.clear();
+        for (int i = 0; i < ids.length - 1; i++) {
+            long startId = ids[i];
+            long endId = ids[i + 1];
+            Runnable runnable = () -> {
+                System.out.printf("开始任务 %s-%s %s%n", startId, endId, Thread.currentThread().getName());
+                try {
+                    long last = startId;
+                    while (true) {
+                        String querySql = String.format("select * from %s where %s>? and %s<=? order by %s limit ?", table, primary, primary, primary);
+                        List<Map<String, Object>> page = queryList(key, schema, querySql, last, endId, batchSize);
+                        if (page.isEmpty()) {
+                            break;
+                        }
+                        Object[][] args = page.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                        int[] r = batchNoRetry(keyTarget, schemaTarget, sql, args);
+                        long l = total.addAndGet(r.length);
+                        System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
+                        last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
+                    }
+                } catch (Exception e) {
+                    System.out.println("backupParallel报错" + e);
+                }
+            };
+            CompletableFuture<Void> completableFuture = Objects.isNull(executor) ?
+                    CompletableFuture.runAsync(runnable) : CompletableFuture.runAsync(runnable, executor);
+            completableFutureList.add(completableFuture);
+        }
+
+        System.out.println("等待所有任务开始");
+        CompletableFuture.allOf(completableFutureList.toArray(new CompletableFuture[0])).join();
+        System.out.println("等待所有任务结束");
+
+        return total;
     }
 
 }
