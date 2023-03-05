@@ -30,6 +30,7 @@ public final class ST {
     public static final Netty netty = new Netty();
     public static final Flink flink = new Flink();
     public static final Time time = new Time();
+    public static final NepxionDiscovery nepxionDiscovery = new NepxionDiscovery();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

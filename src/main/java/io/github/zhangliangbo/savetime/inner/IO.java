@@ -25,6 +25,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.yaml.snakeyaml.Yaml;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -47,6 +48,10 @@ public class IO {
      * json
      */
     private final ObjectMapper objectMapper = new ObjectMapper();
+    /**
+     * yaml
+     */
+    private final Yaml yaml = new Yaml();
 
     public IO() {
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -554,6 +559,16 @@ public class IO {
             appendFile(file, joiner + "\n");
         }
         return true;
+    }
+
+    public JsonNode readYaml(File file) throws FileNotFoundException, JsonProcessingException {
+        Object data = yaml.load(new FileInputStream(file));
+        return toJsonNode(data);
+    }
+
+    public JsonNode readYaml(String content) throws JsonProcessingException {
+        Object data = yaml.load(content);
+        return toJsonNode(data);
     }
 
 }
