@@ -571,4 +571,41 @@ public class IO {
         return toJsonNode(data);
     }
 
+    /**
+     * 读取数据
+     *
+     * @param url  数据源
+     * @param skip 跳过行数
+     * @return 数据
+     * @throws IOException 异常
+     */
+    public String[][] readCsv(URL url, int skip) throws IOException {
+        Stopwatch stopwatch = Stopwatch.createStarted();
+
+        List<String[]> result = new LinkedList<>();
+
+        CSVReader reader = new CSVReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
+        reader.skip(skip);
+
+        for (String[] next : reader) {
+            result.add(next);
+        }
+        reader.close();
+
+        stopwatch.stop();
+        return result.toArray(new String[][]{});
+    }
+
+    /**
+     * 读取数据
+     *
+     * @param file 数据源
+     * @param skip 跳过行数
+     * @return 数据
+     * @throws IOException 异常
+     */
+    public String[][] readCsv(File file, int skip) throws IOException {
+        return readCsv(file.toURI().toURL(), skip);
+    }
+
 }
