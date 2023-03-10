@@ -159,10 +159,14 @@ public class Flink extends Http {
             JsonNode jars = jars(key);
             ArrayNode files = (ArrayNode) jars.path("files");
             String jarName = FilenameUtils.getName(file.getAbsolutePath());
+            String newJarId = FilenameUtils.getName(fileName);
             for (JsonNode oldJarNode : files) {
                 String oldJarName = oldJarNode.get("name").asText();
                 if (Objects.equals(oldJarName, jarName)) {
                     String oldJarId = oldJarNode.get("id").asText();
+                    if (Objects.equals(oldJarId, newJarId)) {
+                        continue;
+                    }
                     jsonNode = jarDelete(key, oldJarId);
                     System.out.printf("删除旧JAR结果 %s %s\n", oldJarId, jsonNode);
                 }
