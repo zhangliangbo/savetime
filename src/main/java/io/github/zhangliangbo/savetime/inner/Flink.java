@@ -109,7 +109,7 @@ public class Flink extends Http {
         return get(key, path);
     }
 
-    public Pair<String, Duration> uploadRunCancel(String key, File file, String name, String entryClass, String programArgs) throws Exception {
+    public Pair<String, Duration> uploadRunCancel(String key, File file, String name, String entryClass, String programArgs, boolean deleteOldJar) throws Exception {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         System.out.println("开始上传jar");
@@ -154,6 +154,21 @@ public class Flink extends Http {
             System.out.printf("取消旧程序结果 %s %s\n", jid, jsonNode);
         }
 
+        if (deleteOldJar) {
+            System.out.println("删除旧JAR开始");
+            JsonNode jars = jars(key);
+            ArrayNode files = (ArrayNode) jars.path("files");
+            String jarName = FilenameUtils.getName(file.getAbsolutePath());
+            for (JsonNode oldJarNode : files) {
+                String oldJarName = oldJarNode.get("name").asText();
+                if (Objects.equals(oldJarName, jarName)) {
+                    String oldJarId = oldJarNode.get("id").asText();
+                    jsonNode = jarDelete(key, oldJarId);
+                    System.out.printf("删除旧JAR结果 %s %s\n", oldJarId, jsonNode);
+                }
+            }
+        }
+
         return Pair.of(jobId, stopwatch.elapsed());
     }
 
@@ -176,6 +191,17 @@ public class Flink extends Http {
 
         return null;
 
+    }
+
+    /**
+     * 所有JAR
+     *
+     * @param key 环境
+     * @return 应答
+     * @throws Exception 异常
+     */
+    public JsonNode jarDelete(String key, String jarId) throws Exception {
+        return delete(key, "/jars/" + jarId);
     }
 
 }
