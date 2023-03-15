@@ -31,6 +31,7 @@ public final class ST {
     public static final Flink flink = new Flink();
     public static final Time time = new Time();
     public static final NepxionDiscovery nepxionDiscovery = new NepxionDiscovery();
+    public static final OpenSearch openSearch = new OpenSearch();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

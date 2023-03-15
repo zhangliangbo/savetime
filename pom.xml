@@ -200,6 +200,11 @@
       <artifactId>snakeyaml</artifactId>
       <version>2.0</version>
     </dependency>
+    <dependency>
+      <groupId>com.aliyun.opensearch</groupId>
+      <artifactId>aliyun-sdk-opensearch</artifactId>
+      <version>3.5.1</version>
+    </dependency>
   </dependencies>
 
   <distributionManagement>
