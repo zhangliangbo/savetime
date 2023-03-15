@@ -34,6 +34,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -606,6 +608,36 @@ public class IO {
      */
     public String[][] readCsv(File file, int skip) throws IOException {
         return readCsv(file.toURI().toURL(), skip);
+    }
+
+    /**
+     * 文件是否包含【字符串】
+     *
+     * @param file    文件
+     * @param keyword 字符串
+     * @return 结果
+     * @throws IOException 异常
+     */
+    public boolean fileContains(File file, String keyword) throws IOException {
+        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
+        FileChannel fileChannel = randomAccessFile.getChannel();
+        MappedByteBuffer mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, randomAccessFile.length());
+        int lineStart = -1;
+        for (int i = 0; i < randomAccessFile.length(); i++) {
+            byte b = mappedByteBuffer.get(i);
+            if (b == '\n') {
+                byte[] bytes = new byte[i - lineStart];
+                mappedByteBuffer.get(bytes);
+                String line = new String(bytes);
+                if (line.contains(keyword)) {
+                    return true;
+                }
+                lineStart = i;
+            }
+        }
+        mappedByteBuffer.force();
+        randomAccessFile.close();
+        return false;
     }
 
 }
