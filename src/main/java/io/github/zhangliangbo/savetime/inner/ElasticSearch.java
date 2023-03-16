@@ -34,14 +34,14 @@ import org.elasticsearch.cluster.metadata.AliasMetadata;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.MatchAllQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -802,6 +802,75 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         }
         result.set("free", free);
         return result;
+    }
+
+
+    public JsonNode searchLike(String key, String alia, Map<String, Object> map, String sort, int page, int size) throws Exception {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String field = entry.getKey();
+            WildcardQueryBuilder builder = QueryBuilders.wildcardQuery(field + ".keyword", "*" + entry.getValue() + "*");
+            boolQueryBuilder.filter(builder);
+        }
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        return processQuery(key, alia, searchSourceBuilder, sort, page, size);
+    }
+
+    public JsonNode searchLike(String key, String alia, Map<String, Object> map) throws Exception {
+        return searchLike(key, alia, map, null, 1, 10);
+    }
+
+    private JsonNode processQuery(String key, String alia, SearchSourceBuilder searchSourceBuilder, String sort, int page, int size) throws Exception {
+        if (StringUtils.isNotBlank(sort)) {
+            searchSourceBuilder.sort(sort, SortOrder.DESC);
+        }
+        // 分页
+        searchSourceBuilder.from((page - 1) * size);
+        searchSourceBuilder.size(size);
+        searchSourceBuilder.trackTotalHits(true);
+
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(alia);
+        searchRequest.source(searchSourceBuilder);
+        System.out.printf("查询语句\n%s\n", searchSourceBuilder);
+        SearchResponse searchResponse = getOrCreate(key).search(searchRequest, RequestOptions.DEFAULT);
+        SearchHits searchHits = searchResponse.getHits();
+
+        ObjectNode ans = new ObjectNode(JsonNodeFactory.instance);
+        long total = searchHits.getTotalHits().value;
+        long pages = total % size == 0 ? total / size : total / size + 1;
+        ans.put("totalNum", total);
+        ans.put("totalPage", pages);
+        ans.put("page", page);
+        ans.put("size", size);
+        ArrayNode data = new ArrayNode(JsonNodeFactory.instance);
+        for (SearchHit searchHit : searchHits) {
+            String sourceAsString = searchHit.getSourceAsString();
+            JsonNode jsonNode = ST.io.readTree(sourceAsString);
+            data.add(jsonNode);
+        }
+        ans.set("data", data);
+        return ans;
+    }
+
+    public JsonNode searchExist(String key, String alia, Set<String> set, String sort, int page, int size) throws Exception {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        for (String field : set) {
+            ExistsQueryBuilder builder = QueryBuilders.existsQuery(field);
+            boolQueryBuilder.filter(builder);
+        }
+        searchSourceBuilder.query(boolQueryBuilder);
+
+        return processQuery(key, alia, searchSourceBuilder, sort, page, size);
+    }
+
+    public JsonNode searchExist(String key, String alia, Set<String> set) throws Exception {
+        return searchExist(key, alia, set, null, 1, 10);
     }
 
 }

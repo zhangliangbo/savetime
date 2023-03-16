@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import io.github.zhangliangbo.savetime.ST;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 
@@ -45,14 +46,19 @@ public class OpenSearch extends AbstractConfigurable<OpenSearchClient> {
      * @return 结果
      * @throws Exception 异常
      */
-    public JsonNode search(String key, String app, String query) throws Exception {
+    public JsonNode search(String key, String app, String query, String filter, int start, int size) throws Exception {
         List<String> appList = Lists.newArrayList(app);
         Config config = new Config(appList);
-        config.setStart(0);
-        config.setHits(10);
+        config.setStart(start);
+        config.setHits(size);
         config.setSearchFormat(SearchFormat.JSON);
         SearchParams searchParams = new SearchParams(config);
-        searchParams.setQuery(query);
+        if (StringUtils.isNotBlank(query)) {
+            searchParams.setQuery(query);
+        }
+        if (StringUtils.isNotBlank(filter)) {
+            searchParams.setFilter(filter);
+        }
         SearcherClient searcherClient = new SearcherClient(getOrCreate(key));
         SearchResult searchResult = searcherClient.execute(searchParams);
         String result = searchResult.getResult();
