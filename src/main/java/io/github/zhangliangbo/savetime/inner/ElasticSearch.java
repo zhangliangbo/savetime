@@ -805,22 +805,18 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
     }
 
 
-    public JsonNode searchLike(String key, String alia, Map<String, Object> map, String sort, int page, int size) throws Exception {
+    public JsonNode search(String key, String alia, Map<String, Object> map, String sort, int page, int size) throws Exception {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            String field = entry.getKey();
-            WildcardQueryBuilder builder = QueryBuilders.wildcardQuery(field + ".keyword", "*" + entry.getValue() + "*");
-            boolQueryBuilder.filter(builder);
-        }
-        searchSourceBuilder.query(boolQueryBuilder);
+        String source = ST.io.toJson(map);
+        WrapperQueryBuilder wrapperQueryBuilder = QueryBuilders.wrapperQuery(source);
+        searchSourceBuilder.query(wrapperQueryBuilder);
 
         return processQuery(key, alia, searchSourceBuilder, sort, page, size);
     }
 
-    public JsonNode searchLike(String key, String alia, Map<String, Object> map) throws Exception {
-        return searchLike(key, alia, map, null, 1, 10);
+    public JsonNode search(String key, String alia, Map<String, Object> map) throws Exception {
+        return search(key, alia, map, null, 1, 10);
     }
 
     private JsonNode processQuery(String key, String alia, SearchSourceBuilder searchSourceBuilder, String sort, int page, int size) throws Exception {
