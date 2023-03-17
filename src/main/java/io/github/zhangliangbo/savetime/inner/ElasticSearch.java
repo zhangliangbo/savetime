@@ -23,6 +23,7 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.*;
@@ -34,7 +35,9 @@ import org.elasticsearch.cluster.metadata.AliasMetadata;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.MatchAllQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.WrapperQueryBuilder;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.search.Scroll;
@@ -805,6 +808,18 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
     }
 
 
+    /**
+     * 搜索文档
+     *
+     * @param key  环境
+     * @param alia 索引
+     * @param map  查询参数
+     * @param sort 排序
+     * @param page 分页
+     * @param size 大小
+     * @return 结果
+     * @throws Exception 异常
+     */
     public JsonNode search(String key, String alia, Map<String, Object> map, String sort, int page, int size) throws Exception {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
@@ -815,8 +830,52 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         return processQuery(key, alia, searchSourceBuilder, sort, page, size);
     }
 
+    /**
+     * 搜索文档
+     *
+     * @param key  环境
+     * @param alia 索引
+     * @param map  查询参数
+     * @return 结果
+     * @throws Exception 异常
+     */
+
     public JsonNode search(String key, String alia, Map<String, Object> map) throws Exception {
         return search(key, alia, map, null, 1, 10);
+    }
+
+    /**
+     * 搜索文档
+     *
+     * @param key    环境
+     * @param alia   索引
+     * @param source 查询参数
+     * @param sort   排序
+     * @param page   分页
+     * @param size   大小
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode search(String key, String alia, String source, String sort, int page, int size) throws Exception {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        WrapperQueryBuilder wrapperQueryBuilder = QueryBuilders.wrapperQuery(source);
+        searchSourceBuilder.query(wrapperQueryBuilder);
+
+        return processQuery(key, alia, searchSourceBuilder, sort, page, size);
+    }
+
+    /**
+     * 搜索文档
+     *
+     * @param key    环境
+     * @param alia   索引
+     * @param source 查询参数
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode search(String key, String alia, String source) throws Exception {
+        return search(key, alia, source, null, 1, 10);
     }
 
     private JsonNode processQuery(String key, String alia, SearchSourceBuilder searchSourceBuilder, String sort, int page, int size) throws Exception {
@@ -852,21 +911,18 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         return ans;
     }
 
-    public JsonNode searchExist(String key, String alia, Set<String> set, String sort, int page, int size) throws Exception {
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        for (String field : set) {
-            ExistsQueryBuilder builder = QueryBuilders.existsQuery(field);
-            boolQueryBuilder.filter(builder);
-        }
-        searchSourceBuilder.query(boolQueryBuilder);
-
-        return processQuery(key, alia, searchSourceBuilder, sort, page, size);
-    }
-
-    public JsonNode searchExist(String key, String alia, Set<String> set) throws Exception {
-        return searchExist(key, alia, set, null, 1, 10);
+    /**
+     * 根据id获取文档
+     *
+     * @param key  环境
+     * @param alia 索引
+     * @param id   id
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode get(String key, String alia, String id) throws Exception {
+        GetResponse getResponse = getOrCreate(key).get(Requests.getRequest(alia).id(id), RequestOptions.DEFAULT);
+        return getResponse.isExists() ? ST.io.readTree(getResponse.getSourceAsString()) : null;
     }
 
 }
