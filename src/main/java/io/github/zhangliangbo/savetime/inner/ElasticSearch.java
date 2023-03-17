@@ -890,7 +890,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         SearchRequest searchRequest = new SearchRequest();
         searchRequest.indices(alia);
         searchRequest.source(searchSourceBuilder);
-        System.out.printf("查询语句\n%s\n", searchSourceBuilder);
+        System.out.printf("%s\n", searchSourceBuilder);
         SearchResponse searchResponse = getOrCreate(key).search(searchRequest, RequestOptions.DEFAULT);
         SearchHits searchHits = searchResponse.getHits();
 
