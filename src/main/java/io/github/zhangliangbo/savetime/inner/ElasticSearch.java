@@ -905,6 +905,7 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         for (SearchHit searchHit : searchHits) {
             String sourceAsString = searchHit.getSourceAsString();
             JsonNode jsonNode = ST.io.readTree(sourceAsString);
+            ((ObjectNode) jsonNode).put("_id", searchHit.getId());
             data.add(jsonNode);
         }
         ans.set("data", data);
