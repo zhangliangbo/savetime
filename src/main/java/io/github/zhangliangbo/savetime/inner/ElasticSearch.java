@@ -23,9 +23,13 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.*;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.client.core.MainResponse;
 import org.elasticsearch.client.indices.*;
@@ -40,6 +44,8 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.WrapperQueryBuilder;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.ReindexRequest;
+import org.elasticsearch.index.reindex.UpdateByQueryRequest;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -55,6 +61,7 @@ import java.math.RoundingMode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -924,6 +931,75 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
     public JsonNode get(String key, String alia, String id) throws Exception {
         GetResponse getResponse = getOrCreate(key).get(Requests.getRequest(alia).id(id), RequestOptions.DEFAULT);
         return getResponse.isExists() ? ST.io.readTree(getResponse.getSourceAsString()) : null;
+    }
+
+    /**
+     * 根据id更新文档
+     *
+     * @param key  环境
+     * @param alia 索引
+     * @param id   id
+     * @param map  数据
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode update(String key, String alia, String id, Map<String, Object> map) throws Exception {
+        UpdateRequest updateRequest = new UpdateRequest()
+                .setRequireAlias(true).index(alia)
+                .id(id).doc(map);
+        UpdateResponse updateResponse = getOrCreate(key).update(updateRequest, RequestOptions.DEFAULT);
+        return ST.io.readTree(updateResponse.toString());
+    }
+
+    /**
+     * 批量更新文档
+     *
+     * @param key      环境
+     * @param alia     索引
+     * @param maps     数据集
+     * @param function 获取id的方法
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode updateBulk(String key, String alia, List<Map<String, Object>> maps, Function<Map<String, Object>, String> function) throws Exception {
+        BulkRequest bulkRequest = new BulkRequest();
+        for (Map<String, Object> map : maps) {
+            String id = function.apply(map);
+            UpdateRequest updateRequest = new UpdateRequest()
+                    .setRequireAlias(true).index(alia)
+                    .id(id).doc(map);
+            bulkRequest.add(updateRequest);
+        }
+        BulkResponse bulkResponse = getOrCreate(key).bulk(bulkRequest, RequestOptions.DEFAULT);
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("status", bulkResponse.status().toString());
+        objectNode.put("ingestTook", bulkResponse.getIngestTook().toHumanReadableString(3));
+        objectNode.put("took", bulkResponse.getTook().toHumanReadableString(3));
+        objectNode.put("itemLength", bulkResponse.getItems().length);
+        objectNode.put("hasFailures", bulkResponse.hasFailures());
+        objectNode.put("failureMessage", bulkResponse.buildFailureMessage());
+        return objectNode;
+    }
+
+    /**
+     * 根据查询更新文档
+     * if (ctx._source.bankType == 'BOC') {ctx._source.aliasName='hello'}
+     *
+     * @param key          环境
+     * @param alia         别名
+     * @param query        查询
+     * @param scriptString 脚本
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode updateByQuery(String key, String alia, String query, String scriptString, int batchSize) throws Exception {
+        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alia);
+        updateByQueryRequest.setQuery(QueryBuilders.wrapperQuery(query));
+        updateByQueryRequest.setBatchSize(batchSize);
+        Script script = new Script(scriptString);
+        updateByQueryRequest.setScript(script);
+        BulkByScrollResponse bulkByScrollResponse = getOrCreate(key).updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
+        return ST.io.readTree(bulkByScrollResponse.toString());
     }
 
 }
