@@ -307,4 +307,22 @@ public class Gitlab extends Http {
         return jsonNode.get("response").asText();
     }
 
+    /**
+     * 比较两个分支
+     *
+     * @param key         环境
+     * @param groupName   组名
+     * @param projectName 项目名
+     * @param from        源分支
+     * @param to          目标分支
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode repositoryCompare(String key, String groupName, String projectName, String from, String to) throws Exception {
+        String projectId = projectIdByName(key, groupName, projectName);
+        String url = String.format("/projects/%s/repository/compare", projectId);
+        java.util.LinkedHashMap<String, Object> query = LinkedHashMap.<String, Object>of("from", from, "to", to).filterValues(Objects::nonNull).toJavaMap();
+        return get(key, url, query);
+    }
+
 }
