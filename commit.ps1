@@ -1,3 +1,3 @@
 git add .
-git commit -m ("auto push "+(Get-Date -Format "yyyyMMddHHmmss"))
+git commit -m ("auto push "+(Get-Date -Format "yyyyMMdd"))
 git pull --ff-only

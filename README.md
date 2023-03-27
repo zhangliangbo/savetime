@@ -6,6 +6,8 @@ or [user guide](http://nbviewer.org/github/zhangliangbo/notebook/blob/main/savet
 
 # 基本设计
 
+核心对象的核心流程。
+
 所有连接信息通过配置文件指定，适用多环境，每个环境的连接信息通过`key`来指定。
 
 # 门面
