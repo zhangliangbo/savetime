@@ -473,7 +473,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @return 线程列表
      */
     public Map<String, List<Object>> showProcessList(String key, String schema) throws Exception {
-        return query(key, schema, "select * from information_schema.processlist order by time desc");
+        return query(key, schema, "select * from information_schema.processlist where command='Query' order by time desc");
     }
 
     /**
@@ -484,7 +484,18 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @return 事务列表
      */
     public Map<String, List<Object>> showTransactionList(String key, String schema) throws Exception {
-        return query(key, schema, "select * from information_schema.innodb_trx");
+        return query(key, schema, "select * from information_schema.innodb_trx order by trx_started");
+    }
+
+    /**
+     * 根据线程id查询事务
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @return 事务列表
+     */
+    public Map<String, List<Object>> showTransactionByThreadId(String key, String schema, String threadId) throws Exception {
+        return query(key, schema, "select * from information_schema.innodb_trx where trx_mysql_thread_id=? order by trx_started", threadId);
     }
 
     /**
