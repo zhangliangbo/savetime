@@ -37,7 +37,7 @@ public class MybatisPlusGenerator extends AbstractConfigurable<AutoGenerator> {
         gc.setFileOverride(true);
         gc.setOpen(false);
         gc.setBaseResultMap(true);
-        gc.setIdType(IdType.AUTO);
+        gc.setIdType(IdType.INPUT);
         gc.setEntityName("%s" + entitySuffix);
         mpg.setGlobalConfig(gc);
 

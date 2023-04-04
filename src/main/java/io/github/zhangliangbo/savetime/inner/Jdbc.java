@@ -691,4 +691,19 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return total;
     }
 
+    /**
+     * 更新记录SQL
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 插入记录SQL
+     * @throws Exception 异常
+     */
+    public String updateTableSql(String key, String schema, String table) throws Exception {
+        List<String> columns = getColumnNames(key, schema, table);
+        String update = columns.stream().map(t -> String.join("=", t, "?")).collect(Collectors.joining(","));
+        return "update " + table + " set " + update + " where id=?";
+    }
+
 }
