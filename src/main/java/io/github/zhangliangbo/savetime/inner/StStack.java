@@ -48,6 +48,27 @@ public class StStack {
 
     }
 
+    public <V, T extends Triple<T, V, T>> void dfsPost(Triple<T, V, T> root, Consumer<V> consumer) {
+        Stack<Triple<T, V, T>> stack = new Stack<>();
+        Triple<T, V, T> current = root;
+        Triple<T, V, T> prevAccess = null;
+        while (current != null || !stack.isEmpty()) {
+            while (current != null) {
+                stack.push(current);
+                current = current.getLeft();
+            }
+            current = stack.pop();
+            if (current.getRight() == null || current.getRight() == prevAccess) {
+                consumer.accept(current.getMiddle());
+                prevAccess = current;
+                current = null;
+            } else {
+                stack.push(current);
+                current = current.getRight();
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Triple<Triple, String, Triple> b = Triple.of(null, "B", null);
         Triple<Triple, String, Triple> d = Triple.of(b, "D", null);
@@ -63,6 +84,8 @@ public class StStack {
         stStack.dfsPre(f, System.out::println);
         System.out.println("in");
         stStack.dfsIn(f, System.out::println);
+        System.out.println("post");
+        stStack.dfsPost(f, System.out::println);
     }
 
 }
