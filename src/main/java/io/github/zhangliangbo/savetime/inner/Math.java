@@ -8,21 +8,24 @@ public class Math {
     /**
      * 立方根是个单调递增函数
      *
-     * @param d 输入数字
+     * @param num 输入数字
      * @return 立方根
      * @see ./png/inner/Math/cubeRoot.png
      */
-    public double cubeRoot(double d) {
-        double left = java.lang.Math.min(d, -1);
-        double right = java.lang.Math.max(1, d);
+    public double cubeRoot(double num) {
+        double left = java.lang.Math.min(num, -1);
+        double right = java.lang.Math.max(1, num);
 
-        double res = d;
-        while (java.lang.Math.abs(right - left) > 10e-6) {
+        double res = num;
+        while (right - left > 10e-6) {
             double mid = (left + right) / 2.0;
-            if (mid * mid * mid > d) {
+            double mid3 = mid * mid * mid;
+            if (mid3 > num) {
                 right = mid;
-            } else {
+            } else if (mid3 < num) {
                 left = mid;
+            } else {
+                return mid;
             }
             res = mid;
         }
@@ -30,6 +33,6 @@ public class Math {
     }
 
     public static void main(String[] args) {
-        System.out.println(new Math().cubeRoot(2.7));
+        System.out.println(new Math().cubeRoot(19.9));
     }
 }
