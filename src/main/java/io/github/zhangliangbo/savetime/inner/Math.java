@@ -10,7 +10,7 @@ public class Math {
      *
      * @param d 输入数字
      * @return 立方根
-     * @see ./png/io.github.zhangliangbo.savetime.inner.Math.cubeRoot.png
+     * @see ./png/inner/Math/cubeRoot.png
      */
     public double cubeRoot(double d) {
         double left = java.lang.Math.min(d, -1);
