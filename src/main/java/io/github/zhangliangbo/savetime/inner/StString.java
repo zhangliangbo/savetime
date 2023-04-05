@@ -57,4 +57,26 @@ public class StString {
         return Pair.of(value.toString(), max);
     }
 
+    public boolean isIpValid(String line) {
+        String regexp = "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+";
+        boolean matches = line.matches(regexp);
+        if (!matches) {
+            return false;
+        }
+        String[] strings = line.split("\\.");
+        boolean valid = true;
+        for (String s : strings) {
+            if (s.startsWith("0") && s.length() > 1) {
+                valid = false;
+                break;
+            }
+            int value = Integer.parseInt(s);
+            if (value < 0 || value > 255) {
+                valid = false;
+                break;
+            }
+        }
+        return valid;
+    }
+
 }
