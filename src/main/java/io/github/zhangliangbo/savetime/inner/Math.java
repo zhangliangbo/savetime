@@ -10,7 +10,6 @@ public class Math {
      *
      * @param num 输入数字
      * @return 立方根
-     * @see ./png/inner/Math/cubeRoot.png
      */
     public double cubeRoot(double num) {
         double left = java.lang.Math.min(num, -1);
