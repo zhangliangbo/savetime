@@ -34,7 +34,9 @@ public final class ST {
     public static final NepxionDiscovery nepxionDiscovery = new NepxionDiscovery();
     public static final OpenSearch openSearch = new OpenSearch();
     public static final StMath math = new StMath();
+    public static final DynamicProgramming dp = new DynamicProgramming();
     public static final StString string = new StString();
+    public static final StStack stack = new StStack();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
