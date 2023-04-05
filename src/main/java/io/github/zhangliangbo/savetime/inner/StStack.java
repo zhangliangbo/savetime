@@ -18,24 +18,32 @@ public class StStack {
      * @param <V>      节点值
      * @param <T>      节点
      */
-    public <V, T extends Triple<T, V, T>> void dfs(Triple<T, V, T> root, Consumer<V> consumer) {
+    public <V, T extends Triple<T, V, T>> void dfsPre(Triple<T, V, T> root, Consumer<V> consumer) {
         Stack<Triple<T, V, T>> stack = new Stack<>();
-
-        stack.push(root);
-
-        while (!stack.isEmpty()) {
-
-            Triple<T, V, T> pop = stack.pop();
-            consumer.accept(pop.getMiddle());
-
-            if (pop.getRight() != null) {
-                stack.push(pop.getRight());
+        Triple<T, V, T> current = root;
+        while (current != null || !stack.isEmpty()) {
+            while (current != null) {
+                consumer.accept(current.getMiddle());
+                stack.push(current);
+                current = current.getLeft();
             }
+            current = stack.pop();
+            current = current.getRight();
+        }
 
-            if (pop.getLeft() != null) {
-                stack.push(pop.getLeft());
+    }
+
+    public <V, T extends Triple<T, V, T>> void dfsIn(Triple<T, V, T> root, Consumer<V> consumer) {
+        Stack<Triple<T, V, T>> stack = new Stack<>();
+        Triple<T, V, T> current = root;
+        while (current != null || !stack.isEmpty()) {
+            while (current != null) {
+                stack.push(current);
+                current = current.getLeft();
             }
-
+            current = stack.pop();
+            consumer.accept(current.getMiddle());
+            current = current.getRight();
         }
 
     }
@@ -50,12 +58,11 @@ public class StStack {
         Triple<Triple, String, Triple> h = Triple.of(null, "H", null);
         Triple<Triple, String, Triple> e = Triple.of(h, "E", g);
         Triple<Triple, String, Triple> f = Triple.of(c, "F", e);
-        new StStack().dfs(f, new Consumer<String>() {
-            @Override
-            public void accept(String s) {
-                System.out.println(s);
-            }
-        });
+        StStack stStack = new StStack();
+        System.out.println("pre");
+        stStack.dfsPre(f, System.out::println);
+        System.out.println("in");
+        stStack.dfsIn(f, System.out::println);
     }
 
 }
