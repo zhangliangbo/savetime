@@ -46,7 +46,7 @@ public class Cf {
      */
     public CompletableFuture<Void> runAll(Runnable... runnable) {
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        return runAll(Math.min(runnable.length, availableProcessors), runnable);
+        return runAll(java.lang.Math.min(runnable.length, availableProcessors), runnable);
     }
 
 }
