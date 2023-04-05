@@ -26,7 +26,6 @@ public class StStack {
         while (!stack.isEmpty()) {
 
             Triple<T, V, T> pop = stack.pop();
-
             consumer.accept(pop.getMiddle());
 
             if (pop.getRight() != null) {
