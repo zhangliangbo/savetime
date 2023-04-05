@@ -1,6 +1,5 @@
 package io.github.zhangliangbo.savetime;
 
-import io.github.zhangliangbo.savetime.inner.Math;
 import io.github.zhangliangbo.savetime.inner.*;
 import io.vavr.collection.List;
 
@@ -34,7 +33,8 @@ public final class ST {
     public static final Time time = new Time();
     public static final NepxionDiscovery nepxionDiscovery = new NepxionDiscovery();
     public static final OpenSearch openSearch = new OpenSearch();
-    public static final Math math = new Math();
+    public static final StMath math = new StMath();
+    public static final StString string = new StString();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

@@ -4,7 +4,7 @@ package io.github.zhangliangbo.savetime.inner;
  * @author zhangliangbo
  * @since 2023/4/5
  */
-public class Math {
+public class StMath {
     /**
      * 立方根是个单调递增函数
      *
@@ -12,8 +12,8 @@ public class Math {
      * @return 立方根
      */
     public double cubeRoot(double num) {
-        double left = java.lang.Math.min(num, -1);
-        double right = java.lang.Math.max(1, num);
+        double left = Math.min(num, -1);
+        double right = Math.max(1, num);
 
         double res = num;
         while (right - left > 10e-6) {
@@ -32,6 +32,6 @@ public class Math {
     }
 
     public static void main(String[] args) {
-        System.out.println(new Math().cubeRoot(19.9));
+        System.out.println(new StMath().cubeRoot(19.9));
     }
 }
