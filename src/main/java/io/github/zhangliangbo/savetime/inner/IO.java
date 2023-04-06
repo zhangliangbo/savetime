@@ -37,6 +37,7 @@ import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -65,10 +66,10 @@ public class IO {
      * @param url      数据源
      * @param consumer 消费者
      * @param skip     跳过行数
-     * @return 【处理的行数，时间ms】
+     * @return 【处理的行数，时间】
      * @throws IOException 异常
      */
-    public Pair<Long, Long> csvByLine(URL url, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
+    public Pair<Long, Duration> csvByLine(URL url, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         CSVReader reader = new CSVReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
@@ -84,7 +85,7 @@ public class IO {
         reader.close();
 
         stopwatch.stop();
-        return Pair.of(line, stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+        return Pair.of(line, stopwatch.elapsed());
     }
 
     /**
@@ -93,10 +94,10 @@ public class IO {
      * @param file     文件
      * @param consumer 消费者
      * @param skip     跳过行数
-     * @return 【处理的行数，时间ms】
+     * @return 【处理的行数，时间】
      * @throws IOException 异常
      */
-    public Pair<Long, Long> csvByLine(File file, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
+    public Pair<Long, Duration> csvByLine(File file, BiConsumer<Long, String[]> consumer, int skip) throws IOException {
         return csvByLine(file.toURI().toURL(), consumer, skip);
     }
 
@@ -107,10 +108,10 @@ public class IO {
      * @param consumer 消费者
      * @param skip     跳过行数
      * @param batch    每批大小
-     * @return 【处理的批次数量，时间ms】
+     * @return 【处理的批次数量，时间】
      * @throws IOException 异常
      */
-    public Pair<Long, Long> csvByBatch(URL url, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
+    public Pair<Long, Duration> csvByBatch(URL url, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
         CSVReader reader = new CSVReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8));
@@ -136,7 +137,7 @@ public class IO {
         reader.close();
 
         stopwatch.stop();
-        return Pair.of(line, stopwatch.elapsed(java.util.concurrent.TimeUnit.MILLISECONDS));
+        return Pair.of(line, stopwatch.elapsed());
     }
 
     /**
@@ -146,10 +147,10 @@ public class IO {
      * @param consumer 消费者
      * @param skip     跳过行数
      * @param batch    每批大小
-     * @return 【处理的批次数量，时间ms】
+     * @return 【处理的批次数量，时间】
      * @throws IOException 异常
      */
-    public Pair<Long, Long> csvByBatch(File file, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
+    public Pair<Long, Duration> csvByBatch(File file, BiConsumer<Long, List<String[]>> consumer, int skip, int batch) throws IOException {
         return csvByBatch(file.toURI().toURL(), consumer, skip, batch);
     }
 
