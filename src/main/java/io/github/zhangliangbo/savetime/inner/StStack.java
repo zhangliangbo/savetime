@@ -57,13 +57,13 @@ public class StStack {
                 stack.push(current);
                 current = current.getLeft();
             }
-            current = stack.pop();
+            current = stack.peek();
             if (current.getRight() == null || current.getRight() == prevAccess) {
+                current = stack.pop();
                 consumer.accept(current.getMiddle());
                 prevAccess = current;
                 current = null;
             } else {
-                stack.push(current);
                 current = current.getRight();
             }
         }
