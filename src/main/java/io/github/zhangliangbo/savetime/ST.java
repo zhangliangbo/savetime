@@ -37,6 +37,8 @@ public final class ST {
     public static final DynamicProgramming dp = new DynamicProgramming();
     public static final StString string = new StString();
     public static final StStack stack = new StStack();
+    public static final StQueue queue = new StQueue();
+    public static final Data data = new Data();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

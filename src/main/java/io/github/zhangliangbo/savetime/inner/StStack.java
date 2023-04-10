@@ -1,5 +1,6 @@
 package io.github.zhangliangbo.savetime.inner;
 
+import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.Stack;
@@ -70,22 +71,14 @@ public class StStack {
     }
 
     public static void main(String[] args) {
-        Triple<Triple, String, Triple> b = Triple.of(null, "B", null);
-        Triple<Triple, String, Triple> d = Triple.of(b, "D", null);
-        Triple<Triple, String, Triple> a = Triple.of(null, "A", null);
-        Triple<Triple, String, Triple> c = Triple.of(a, "C", d);
-        Triple<Triple, String, Triple> m = Triple.of(null, "M", null);
-        Triple<Triple, String, Triple> g = Triple.of(m, "G", null);
-        Triple<Triple, String, Triple> h = Triple.of(null, "H", null);
-        Triple<Triple, String, Triple> e = Triple.of(h, "E", g);
-        Triple<Triple, String, Triple> f = Triple.of(c, "F", e);
+        Triple<Triple, String, Triple> tree = ST.data.tree();
         StStack stStack = new StStack();
         System.out.println("pre");
-        stStack.dfsPre(f, System.out::println);
+        stStack.dfsPre(tree, System.out::println);
         System.out.println("in");
-        stStack.dfsIn(f, System.out::println);
+        stStack.dfsIn(tree, System.out::println);
         System.out.println("post");
-        stStack.dfsPost(f, System.out::println);
+        stStack.dfsPost(tree, System.out::println);
     }
 
 }
