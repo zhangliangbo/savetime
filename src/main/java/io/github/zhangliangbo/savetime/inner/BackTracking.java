@@ -39,8 +39,8 @@ public class BackTracking {
     }
 
     public static void main(String[] args) {
-        BackTracking recall = new BackTracking();
-        List<List<Integer>> permutation = recall.permutation(new Integer[]{1, 2, 3});
+        BackTracking backTracking = new BackTracking();
+        List<List<Integer>> permutation = backTracking.permutation(new Integer[]{1, 2, 3});
         System.out.println(permutation);
     }
 
