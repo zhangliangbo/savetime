@@ -39,6 +39,7 @@ public final class ST {
     public static final StStack stack = new StStack();
     public static final StQueue queue = new StQueue();
     public static final Data data = new Data();
+    public static final StJsoup jsoup = new StJsoup();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

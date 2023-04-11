@@ -65,4 +65,18 @@ public class OpenSearch extends AbstractConfigurable<OpenSearchClient> {
         return ST.io.readTree(result);
     }
 
+
+    /**
+     * 搜索
+     *
+     * @param key   环境
+     * @param app   程序
+     * @param query 查询语句
+     * @return 结果
+     * @throws Exception 异常
+     */
+    public JsonNode search(String key, String app, String query, String filter) throws Exception {
+        return search(key, app, query, filter, 0, 1);
+    }
+
 }
