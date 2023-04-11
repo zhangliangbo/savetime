@@ -16,11 +16,11 @@ public class BackTracking {
     public <T> List<List<T>> permutation(T[] ts) {
         List<List<T>> res = new LinkedList<>();
         List<T> container = new LinkedList<>();
-        dfs(ts, container, res);
+        recurse(ts, container, res);
         return res;
     }
 
-    private <T> void dfs(T[] ts, List<T> container, List<List<T>> res) {
+    private <T> void recurse(T[] ts, List<T> container, List<List<T>> res) {
         if (container.size() == ts.length) {
             List<T> one = new LinkedList<>(container);
             res.add(one);
@@ -32,7 +32,7 @@ public class BackTracking {
                 continue;
             }
             container.add(t);
-            dfs(ts, container, res);
+            recurse(ts, container, res);
             int last = container.size() - 1;
             container.remove(last);
         }
