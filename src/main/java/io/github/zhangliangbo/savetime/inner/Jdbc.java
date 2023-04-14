@@ -3,6 +3,7 @@ package io.github.zhangliangbo.savetime.inner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -729,6 +730,31 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         }
 
         return ST.io.toJsonNode(res);
+    }
+
+    /**
+     * 在多个表中更新sql
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表（用于like）
+     * @param sql    sql语句，%s表示表名
+     * @param args   参数
+     * @return 数据集
+     * @throws Exception 异常
+     */
+    public Map<String, List<Object>> updateLike(String key, String schema, String table, String sql, Object... args) throws Exception {
+        List<Object> tables = showTableLike(key, schema, table);
+
+        Map<String, List<Object>> res = new LinkedHashMap<>();
+        for (Object o : tables) {
+            String t = String.valueOf(o);
+            String newSql = String.format(sql, t);
+            int update = update(key, schema, newSql, args);
+            res.put(t, Lists.newArrayList(update));
+        }
+
+        return res;
     }
 
 }
