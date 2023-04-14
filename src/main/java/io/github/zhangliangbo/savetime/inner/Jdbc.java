@@ -706,4 +706,29 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return "update " + table + " set " + update + " where id=?";
     }
 
+    /**
+     * 在多个表中查询sql
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表（用于like）
+     * @param sql    sql语句，%s表示表名
+     * @param args   参数
+     * @return 数据集
+     * @throws Exception 异常
+     */
+    public JsonNode queryLike(String key, String schema, String table, String sql, Object... args) throws Exception {
+        List<Object> tables = showTableLike(key, schema, table);
+        Map<String, List<Map<String, Object>>> res = new LinkedHashMap<>();
+
+        for (Object o : tables) {
+            String t = String.valueOf(o);
+            String newSql = String.format(sql, t);
+            List<Map<String, Object>> list = retry(this::queryList, key, schema, newSql, args);
+            res.put(t, list);
+        }
+
+        return ST.io.toJsonNode(res);
+    }
+
 }
