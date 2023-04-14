@@ -759,4 +759,63 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         return res;
     }
 
+    /**
+     * 并行在多个表中查询sql
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表（用于like）
+     * @param sql    sql语句，%s表示表名
+     * @param args   参数
+     * @return 数据集
+     * @throws Exception 异常
+     */
+    public JsonNode queryLikeParallel(String key, String schema, String table, String sql, Object... args) throws Exception {
+        List<Object> tables = showTableLike(key, schema, table);
+        Map<String, List<Map<String, Object>>> res = tables.stream().parallel()
+                .map(o -> {
+                    String t = String.valueOf(o);
+                    String newSql = String.format(sql, t);
+                    try {
+                        List<Map<String, Object>> list = retry(this::queryList, key, schema, newSql, args);
+                        return Pair.of(t, list);
+                    } catch (Exception e) {
+                        System.out.printf("%s %s", t, e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Pair::getKey, Pair::getValue, (a, b) -> a));
+        return ST.io.toJsonNode(res);
+    }
+
+    /**
+     * 并行在多个表中更新sql
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表（用于like）
+     * @param sql    sql语句，%s表示表名
+     * @param args   参数
+     * @return 数据集
+     * @throws Exception 异常
+     */
+    public Map<String, List<Object>> updateLikeParallel(String key, String schema, String table, String sql, Object... args) throws Exception {
+        List<Object> tables = showTableLike(key, schema, table);
+
+        return tables.stream().parallel()
+                .map(o -> {
+                    String t = String.valueOf(o);
+                    String newSql = String.format(sql, t);
+                    try {
+                        int update = update(key, schema, newSql, args);
+                        return Pair.of(t, Lists.newArrayList((Object) update));
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Pair::getKey, Pair::getValue, (a, b) -> a));
+    }
+
 }
