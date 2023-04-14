@@ -40,7 +40,7 @@ public class BackTracking {
 
     public static void main(String[] args) {
         BackTracking backTracking = new BackTracking();
-        List<List<Integer>> permutation = backTracking.permutation(new Integer[]{1, 2, 3});
+        List<List<String>> permutation = backTracking.permutation(new String[]{"a", "b", "c"});
         System.out.println(permutation);
     }
 
