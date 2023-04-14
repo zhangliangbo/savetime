@@ -726,6 +726,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             String t = String.valueOf(o);
             String newSql = String.format(sql, t);
             List<Map<String, Object>> list = retry(this::queryList, key, schema, newSql, args);
+            System.out.println(t + "=" + list.size());
             res.put(t, list);
         }
 
@@ -751,6 +752,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             String t = String.valueOf(o);
             String newSql = String.format(sql, t);
             int update = update(key, schema, newSql, args);
+            System.out.println(t + "=" + update);
             res.put(t, Lists.newArrayList(update));
         }
 
