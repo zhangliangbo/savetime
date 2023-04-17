@@ -1,4 +1,4 @@
-package io.github.zhangliangbo.savetime.inner;
+package io.github.zhangliangbo.savetime.inner.method;
 
 /**
  * @author zhangliangbo

@@ -1,4 +1,4 @@
-package io.github.zhangliangbo.savetime.inner;
+package io.github.zhangliangbo.savetime.inner.method;
 
 import java.util.LinkedList;
 import java.util.List;

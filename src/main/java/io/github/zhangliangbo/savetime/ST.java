@@ -1,6 +1,7 @@
 package io.github.zhangliangbo.savetime;
 
 import io.github.zhangliangbo.savetime.inner.*;
+import io.github.zhangliangbo.savetime.inner.method.*;
 import io.vavr.collection.List;
 
 
@@ -41,6 +42,7 @@ public final class ST {
     public static final Data data = new Data();
     public static final StJsoup jsoup = new StJsoup();
     public static final BackTracking backTracking = new BackTracking();
+    public static final DivideConquer divideConquer = new DivideConquer();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);

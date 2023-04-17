@@ -818,4 +818,80 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue, (a, b) -> a));
     }
 
+    public Pair<Long, Duration> transferByQuery(String key, String schema, String table, String condition, String keyTarget, String schemaTarget, boolean dropOld, boolean deleteOld) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+
+        if (dropOld) {
+            int i = dropTable(keyTarget, schemaTarget, table);
+            System.out.printf("删除表 %s %s %s %s%n", keyTarget, schemaTarget, table, i);
+            String createTableSql = createTableSql(key, schema, table);
+            int update = update(keyTarget, keyTarget, createTableSql);
+            System.out.printf("创建表 %s %s %s %s%n", keyTarget, schemaTarget, table, update);
+        }
+
+        String insertTableSql = insertTableSql(keyTarget, schemaTarget, table);
+        String updateTableSql = updateTableSql(keyTarget, schemaTarget, table);
+
+        String primary = getPrimaryColumn(key, schema, table);
+
+        AtomicLong total = new AtomicLong(0);
+        String querySql = String.format("select * from %s where %s and %s>? order by %s limit ?", table, condition, primary, primary);
+        try {
+            long last = 0;
+            while (true) {
+                List<Map<String, Object>> page = queryList(key, schema, querySql, last, 1000);
+                if (page.isEmpty()) {
+                    break;
+                }
+
+                List<Map<String, Object>> inserts = new LinkedList<>();
+                List<Map<String, Object>> updates = new LinkedList<>();
+
+                Set<Object> exist = new HashSet<>();
+
+                if (dropOld) {
+                    inserts.addAll(page);
+                } else {
+                    List<Object> ids = page.stream().map(t -> t.get(primary)).collect(Collectors.toList());
+                    StringJoiner stringJoiner = new StringJoiner(",", "(", ")");
+                    for (Object id : ids) {
+                        stringJoiner.add(String.valueOf(id));
+                    }
+                    String primarySql = String.format("select %s from %s where %s in %s", primary, table, primary, stringJoiner);
+                    //去目标表查有没有数据，根据主键
+                    List<Map<String, Object>> list = queryList(keyTarget, keyTarget, primarySql);
+                    if (CollectionUtils.isEmpty(list)) {
+                        inserts.addAll(page);
+                    } else {
+                        stringJoiner = new StringJoiner(",", "(", ")");
+                        for (Map<String, Object> map : list) {
+                            Object o = map.get(primary);
+                            exist.add(o);
+                            stringJoiner.add(String.valueOf(o));
+                        }
+                        if (deleteOld) {
+                            //删除存量数据
+                            String deleteSql = String.format("delete from %s where %s in %s", primary, table, primary, stringJoiner);
+                        }
+                        for (Map<String, Object> map : page) {
+                            Object o = map.get(primary);
+
+                        }
+                    }
+                }
+
+
+                Object[][] args = inserts.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                int[] r = batchNoRetry(keyTarget, schemaTarget, insertTableSql, args);
+                long l = total.addAndGet(r.length);
+                System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
+                last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
+            }
+        } catch (Exception e) {
+            System.out.println("transferByQuery报错" + e);
+        }
+
+        return Pair.of(total.get(), sw.stop().elapsed());
+    }
+
 }

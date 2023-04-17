@@ -1,4 +1,4 @@
-package io.github.zhangliangbo.savetime.inner;
+package io.github.zhangliangbo.savetime.inner.method;
 
 import io.github.zhangliangbo.savetime.ST;
 import org.apache.commons.lang3.tuple.Triple;
