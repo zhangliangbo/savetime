@@ -2,6 +2,8 @@ package io.github.zhangliangbo.savetime.inner.method;
 
 import io.github.zhangliangbo.savetime.inner.problem.MaxSubArray;
 
+import java.util.Arrays;
+
 /**
  * @author zhangliangbo
  * @since 2023/4/17
@@ -9,38 +11,58 @@ import io.github.zhangliangbo.savetime.inner.problem.MaxSubArray;
 public class DivideConquer implements MaxSubArray {
 
     @Override
-    public int[] maxSubArray(int a) {
-        return new int[0];
-    }
-    public int maxSubArray(int[] nums) {
-        return getMaxSubSum(nums, 0, nums.length - 1);
-    }
-    private int getMaxSubSum(int[] nums, int left, int right){
-        if(left == right){
-            return nums[left];
-        }
-        int mid = left + (right - left) / 2;
-        int leftMaxSum = getMaxSubSum(nums, left, mid);
-        int rightMaxSum = getMaxSubSum(nums, mid + 1, right);
-        int crossingMaxSum = getCrossingMaxSum(nums, mid, left, right);
-        return Math.max(Math.max(leftMaxSum, rightMaxSum), crossingMaxSum);
+    public int[] maxSubArray(int[] nums) {
+        return findMaximumSubArray(nums, 0, nums.length - 1);
     }
 
-    private int getCrossingMaxSum(int[] nums, int mid, int left, int right){
-        int leftMaxSum = nums[mid];
-        int tempSum = nums[mid];
-        for(int i = mid - 1; i >= left; i--){
-            tempSum += nums[i];
-            leftMaxSum = Math.max(leftMaxSum, tempSum);
+    private int[] findMaxCrossingSubArray(int[] nums, int low, int mid, int high) {
+        int leftSum = Integer.MIN_VALUE;
+        int maxLeft = mid;
+
+        int sum = 0;
+        for (int i = mid; i >= low; i--) {
+            sum = sum + nums[i];
+            if (sum > leftSum) {
+                leftSum = sum;
+                maxLeft = i;
+            }
         }
 
-        int rightMaxSum = nums[mid + 1];
-        tempSum = nums[mid + 1];
-        for(int i = mid + 2; i <= right; i++){
-            tempSum += nums[i];
-            rightMaxSum = Math.max(rightMaxSum, tempSum);
+        int rightSum = Integer.MIN_VALUE;
+        int maxRight = mid;
+        sum = 0;
+        for (int i = mid + 1; i <= high; i++) {
+            sum = sum + nums[i];
+            if (sum > rightSum) {
+                rightSum = sum;
+                maxRight = i;
+            }
         }
 
-        return leftMaxSum + rightMaxSum;
+        return new int[]{maxLeft, maxRight, leftSum + rightSum};
     }
+
+    private int[] findMaximumSubArray(int[] nums, int low, int high) {
+        if (high == low) {
+            return new int[]{low, high, nums[low]};
+        }
+        int mid = (low + high) / 2;
+        int[] left = findMaximumSubArray(nums, low, mid);
+        int[] right = findMaximumSubArray(nums, mid + 1, high);
+        int[] crossing = findMaxCrossingSubArray(nums, low, mid, high);
+        if (left[2] >= right[2] && left[2] >= crossing[2]) {
+            return left;
+        } else if (right[2] >= left[2] && right[2] >= crossing[2]) {
+            return right;
+        } else {
+            return crossing;
+        }
+    }
+
+    public static void main(String[] args) {
+        DivideConquer divideConquer = new DivideConquer();
+        int[] maximumSubArray = divideConquer.maxSubArray(divideConquer.maxSubArraySample());
+        System.out.println(Arrays.toString(maximumSubArray));
+    }
+
 }
