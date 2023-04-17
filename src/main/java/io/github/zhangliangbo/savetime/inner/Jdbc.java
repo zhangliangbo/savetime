@@ -901,27 +901,35 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     replaces.addAll(page);
                 }
 
-                int length = 0;
                 if (CollectionUtils.isNotEmpty(inserts)) {
                     Callable<Integer> callable = () -> {
                         Object[][] args = inserts.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
                         int[] r = batchNoRetry(keyTarget, schemaTarget, insertTableSql, args);
                         System.out.printf("insert记录 %s %s %s %s%n", keyTarget, schemaTarget, table, r.length);
-                        long l = total.addAndGet(length);
+                        long l = total.addAndGet(r.length);
                         System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
                         return r.length;
                     };
                     if (Objects.isNull(executorService)) {
-                        length = callable.call();
+                        callable.call();
                     } else {
-                        Future<Integer> submit = executorService.submit(callable);
-                        length= submit.get();
+                        executorService.submit(callable);
                     }
                 }
                 if (CollectionUtils.isNotEmpty(replaces)) {
-                    Object[][] args = replaces.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
-                    r = batchNoRetry(keyTarget, schemaTarget, replaceTableSql, args);
-                    System.out.printf("replace记录 %s %s %s %s%n", keyTarget, schemaTarget, table, r.length);
+                    Callable<Integer> callable = () -> {
+                        Object[][] args = replaces.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                        int[] r = batchNoRetry(keyTarget, schemaTarget, replaceTableSql, args);
+                        System.out.printf("replace记录 %s %s %s %s%n", keyTarget, schemaTarget, table, r.length);
+                        long l = total.addAndGet(r.length);
+                        System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
+                        return r.length;
+                    };
+                    if (Objects.isNull(executorService)) {
+                        callable.call();
+                    } else {
+                        executorService.submit(callable);
+                    }
                 }
 
                 last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
