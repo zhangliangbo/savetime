@@ -17,8 +17,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -818,80 +817,155 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue, (a, b) -> a));
     }
 
-    public Pair<Long, Duration> transferByQuery(String key, String schema, String table, String condition, String keyTarget, String schemaTarget, boolean dropOld, boolean deleteOld) throws Exception {
+    /**
+     * 替换记录SQL
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表
+     * @return 插入记录SQL
+     * @throws Exception 异常
+     */
+    public String replaceTableSql(String key, String schema, String table) throws Exception {
+        List<String> columns = getColumnNames(key, schema, table);
+        return "replace into " + table + " " + columns.stream().collect(Collectors.joining(",", "(", ")")) +
+                " values " + columns.stream().map(t -> "?").collect(Collectors.joining(",", "(", ")"));
+    }
+
+    /**
+     * 根据查询条件转移数据，有则新增，无则替换
+     *
+     * @param key          环境
+     * @param schema       数据库
+     * @param table        表
+     * @param condition    条件
+     * @param keyTarget    目标环境
+     * @param schemaTarget 目标数据库
+     * @param dropOld      是否删除表
+     * @return 条数和时间
+     * @throws Exception 异常
+     */
+    public Pair<Long, Duration> transferByQuery(String key, String schema, String table, String condition, String keyTarget, String schemaTarget, boolean dropOld) throws Exception {
         Stopwatch sw = Stopwatch.createStarted();
 
-        if (dropOld) {
+        List<Object> objects = showTableLike(keyTarget, schemaTarget, table);
+        boolean tableExist = CollectionUtils.isNotEmpty(objects);
+
+        if (tableExist && dropOld) {
             int i = dropTable(keyTarget, schemaTarget, table);
             System.out.printf("删除表 %s %s %s %s%n", keyTarget, schemaTarget, table, i);
+            tableExist = false;
+        }
+
+        if (!tableExist) {
             String createTableSql = createTableSql(key, schema, table);
-            int update = update(keyTarget, keyTarget, createTableSql);
+            int update = update(keyTarget, schemaTarget, createTableSql);
             System.out.printf("创建表 %s %s %s %s%n", keyTarget, schemaTarget, table, update);
         }
 
         String insertTableSql = insertTableSql(keyTarget, schemaTarget, table);
-        String updateTableSql = updateTableSql(keyTarget, schemaTarget, table);
+        String replaceTableSql = replaceTableSql(keyTarget, schemaTarget, table);
 
         String primary = getPrimaryColumn(key, schema, table);
+
+        String countSql = String.format("select count(*) from %s where %s", table, condition);
+        long count = ((Number) countByQuery(key, schema, table, countSql)).longValue();
+
+        ExecutorService executorService = null;
+        int size = 1000;
+        if (count > size) {
+            int processors = Runtime.getRuntime().availableProcessors();
+            int part = (int) (count % size == 0 ? count / size : count / size + 1);
+            int parallel = Math.min(part, processors);
+            executorService = new ThreadPoolExecutor(parallel, parallel,
+                    10, TimeUnit.MINUTES,
+                    new LinkedBlockingQueue<>(Math.min(part, 1024)), new DefaultRunsPolicy());
+        }
 
         AtomicLong total = new AtomicLong(0);
         String querySql = String.format("select * from %s where %s and %s>? order by %s limit ?", table, condition, primary, primary);
         try {
             long last = 0;
             while (true) {
-                List<Map<String, Object>> page = queryList(key, schema, querySql, last, 1000);
+                List<Map<String, Object>> page = queryList(key, schema, querySql, last, size);
                 if (page.isEmpty()) {
                     break;
                 }
 
                 List<Map<String, Object>> inserts = new LinkedList<>();
-                List<Map<String, Object>> updates = new LinkedList<>();
-
-                Set<Object> exist = new HashSet<>();
+                List<Map<String, Object>> replaces = new LinkedList<>();
 
                 if (dropOld) {
                     inserts.addAll(page);
                 } else {
-                    List<Object> ids = page.stream().map(t -> t.get(primary)).collect(Collectors.toList());
-                    StringJoiner stringJoiner = new StringJoiner(",", "(", ")");
-                    for (Object id : ids) {
-                        stringJoiner.add(String.valueOf(id));
-                    }
-                    String primarySql = String.format("select %s from %s where %s in %s", primary, table, primary, stringJoiner);
-                    //去目标表查有没有数据，根据主键
-                    List<Map<String, Object>> list = queryList(keyTarget, keyTarget, primarySql);
-                    if (CollectionUtils.isEmpty(list)) {
-                        inserts.addAll(page);
-                    } else {
-                        stringJoiner = new StringJoiner(",", "(", ")");
-                        for (Map<String, Object> map : list) {
-                            Object o = map.get(primary);
-                            exist.add(o);
-                            stringJoiner.add(String.valueOf(o));
-                        }
-                        if (deleteOld) {
-                            //删除存量数据
-                            String deleteSql = String.format("delete from %s where %s in %s", primary, table, primary, stringJoiner);
-                        }
-                        for (Map<String, Object> map : page) {
-                            Object o = map.get(primary);
-
-                        }
-                    }
+                    replaces.addAll(page);
                 }
 
+                int length = 0;
+                if (CollectionUtils.isNotEmpty(inserts)) {
+                    Callable<Integer> callable = () -> {
+                        Object[][] args = inserts.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                        int[] r = batchNoRetry(keyTarget, schemaTarget, insertTableSql, args);
+                        System.out.printf("insert记录 %s %s %s %s%n", keyTarget, schemaTarget, table, r.length);
+                        long l = total.addAndGet(length);
+                        System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
+                        return r.length;
+                    };
+                    if (Objects.isNull(executorService)) {
+                        length = callable.call();
+                    } else {
+                        Future<Integer> submit = executorService.submit(callable);
+                        length= submit.get();
+                    }
+                }
+                if (CollectionUtils.isNotEmpty(replaces)) {
+                    Object[][] args = replaces.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
+                    r = batchNoRetry(keyTarget, schemaTarget, replaceTableSql, args);
+                    System.out.printf("replace记录 %s %s %s %s%n", keyTarget, schemaTarget, table, r.length);
+                }
 
-                Object[][] args = inserts.stream().map(it -> it.values().toArray(new Object[0])).toArray(Object[][]::new);
-                int[] r = batchNoRetry(keyTarget, schemaTarget, insertTableSql, args);
-                long l = total.addAndGet(r.length);
-                System.out.printf("当前进度 %s %s%n", l, Thread.currentThread().getName());
                 last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
             }
         } catch (Exception e) {
             System.out.println("transferByQuery报错" + e);
         }
 
+        if (Objects.nonNull(executorService)) {
+            executorService.shutdown();
+        }
+
         return Pair.of(total.get(), sw.stop().elapsed());
+    }
+
+    /**
+     * 根据查询条件转移数据，有则新增，无则替换
+     * 默认不删除旧表
+     *
+     * @param key          环境
+     * @param schema       数据库
+     * @param table        表
+     * @param condition    条件
+     * @param keyTarget    目标环境
+     * @param schemaTarget 目标数据库
+     * @return 条数和时间
+     * @throws Exception 异常
+     */
+    public Pair<Long, Duration> transferByQuery(String key, String schema, String table, String condition, String keyTarget, String schemaTarget) throws Exception {
+        return transferByQuery(key, schema, table, condition, keyTarget, schemaTarget, false);
+    }
+
+    /**
+     * 根据条件查询记录总数
+     *
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param condition 条件
+     * @return 变量信息
+     */
+    public Object countByQuery(String key, String schema, String table, String condition) throws Exception {
+        return query(key, schema, String.format("select count(*) from %s where %s", table, condition)).values().stream().findFirst().orElse(new LinkedList<>())
+                .stream().findFirst().orElse(0L);
     }
 
 }

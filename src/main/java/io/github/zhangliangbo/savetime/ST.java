@@ -43,6 +43,7 @@ public final class ST {
     public static final StJsoup jsoup = new StJsoup();
     public static final BackTracking backTracking = new BackTracking();
     public static final DivideConquer divideConquer = new DivideConquer();
+    public static final Greedy greedy = new Greedy();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
