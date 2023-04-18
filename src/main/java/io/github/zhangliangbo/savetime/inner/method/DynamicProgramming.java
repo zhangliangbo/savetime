@@ -1,5 +1,8 @@
 package io.github.zhangliangbo.savetime.inner.method;
 
+import io.github.zhangliangbo.savetime.inner.problem.MaxSubArray;
+
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -7,7 +10,7 @@ import java.util.List;
  * @author zhangliangbo
  * @since 2023/4/5
  */
-public class DynamicProgramming {
+public class DynamicProgramming implements MaxSubArray {
 
     /**
      * 只求长度，不用打印序列
@@ -77,6 +80,38 @@ public class DynamicProgramming {
         DynamicProgramming dynamicProgramming = new DynamicProgramming();
         System.out.println(dynamicProgramming.longestIncreasingSubsequenceLength(nums));
         System.out.println(dynamicProgramming.longestIncreasingSubsequence(nums));
+        int[] ints = dynamicProgramming.maxSubArray(new int[]{9, -1, -1, -1});
+        System.out.println(Arrays.toString(ints));
+    }
+
+    @Override
+    public int[] maxSubArray(int[] nums) {
+        int[] dp = new int[nums.length];
+        dp[0] = nums[0];
+
+        int max = dp[0];
+        int maxLeft = 0;
+        int maxRight = 0;
+
+        int low = 0;
+        int high = 0;
+        for (int i = 1; i < nums.length; i++) {
+            int plus = dp[i - 1] + nums[i];
+            if (plus > nums[i]) {
+                dp[i] = plus;
+                high = i;
+            } else {
+                dp[i] = nums[i];
+                low = i;
+            }
+            if (dp[i] > max) {
+                max = dp[i];
+                maxLeft = low;
+                maxRight = high;
+            }
+        }
+
+        return new int[]{maxLeft, maxRight, max};
     }
 
 }

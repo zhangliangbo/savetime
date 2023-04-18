@@ -33,6 +33,7 @@ import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.client.core.MainResponse;
 import org.elasticsearch.client.indices.*;
+import org.elasticsearch.client.license.*;
 import org.elasticsearch.cluster.health.ClusterIndexHealth;
 import org.elasticsearch.cluster.health.ClusterShardHealth;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
@@ -1000,6 +1001,64 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         updateByQueryRequest.setScript(script);
         BulkByScrollResponse bulkByScrollResponse = getOrCreate(key).updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
         return ST.io.readTree(bulkByScrollResponse.toString());
+    }
+
+    /**
+     * 获取证书信息
+     *
+     * @param key 环境
+     * @return 证书
+     * @throws Exception 异常
+     */
+    public JsonNode license(String key) throws Exception {
+        GetLicenseRequest getLicenseRequest = new GetLicenseRequest();
+        GetLicenseResponse getLicenseResponse = getOrCreate(key).license().getLicense(getLicenseRequest, RequestOptions.DEFAULT);
+        String licenseDefinition = getLicenseResponse.getLicenseDefinition();
+        return ST.io.readTree(licenseDefinition);
+    }
+
+    /**
+     * 开始试用
+     *
+     * @param key 环境
+     * @return 证书
+     * @throws Exception 异常
+     */
+    public JsonNode startTrial(String key) throws Exception {
+        StartTrialRequest startTrialRequest = new StartTrialRequest(true);
+        StartTrialResponse startTrialResponse = getOrCreate(key).license().startTrial(startTrialRequest, RequestOptions.DEFAULT);
+
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("isAcknowledged", startTrialResponse.isAcknowledged());
+        objectNode.put("isTrialWasStarted", startTrialResponse.isTrialWasStarted());
+        objectNode.put("licenseType", startTrialResponse.getLicenseType());
+        objectNode.put("acknowledgeHeader", startTrialResponse.getAcknowledgeHeader());
+        objectNode.put("errorMessage", startTrialResponse.getErrorMessage());
+        Map<String, String[]> acknowledgeMessages = startTrialResponse.getAcknowledgeMessages();
+        objectNode.set("acknowledgeMessages", ST.io.toJsonNode(acknowledgeMessages));
+        return objectNode;
+    }
+
+    /**
+     * 开始基础使用
+     *
+     * @param key 环境
+     * @return 证书
+     * @throws Exception 异常
+     */
+    public JsonNode startBasic(String key) throws Exception {
+        StartBasicRequest startBasicRequest = new StartBasicRequest(true);
+        StartBasicResponse startBasicResponse = getOrCreate(key).license().startBasic(startBasicRequest, RequestOptions.DEFAULT);
+
+        ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+        objectNode.put("isAcknowledged", startBasicResponse.isAcknowledged());
+        objectNode.put("isBasicStarted", startBasicResponse.isBasicStarted());
+        objectNode.put("status", startBasicResponse.getStatus().name());
+        objectNode.put("acknowledgeMessage", startBasicResponse.getAcknowledgeMessage());
+        objectNode.put("errorMessage", startBasicResponse.getErrorMessage());
+        Map<String, String[]> acknowledgeMessages = startBasicResponse.getAcknowledgeMessages();
+        objectNode.set("acknowledgeMessages", ST.io.toJsonNode(acknowledgeMessages));
+        return objectNode;
     }
 
 }

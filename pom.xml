@@ -19,6 +19,7 @@
     <jackson.version>2.10.4</jackson.version>
     <logback.version>1.2.11</logback.version>
     <netty.version>4.1.72.Final</netty.version>
+    <elasticsearch.version>7.11.2</elasticsearch.version>
   </properties>
 
   <dependencies>
@@ -121,7 +122,12 @@
     <dependency>
       <groupId>org.elasticsearch.client</groupId>
       <artifactId>elasticsearch-rest-high-level-client</artifactId>
-      <version>7.11.2</version>
+      <version>${elasticsearch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.elasticsearch.plugin</groupId>
+      <artifactId>x-pack-sql-jdbc</artifactId>
+      <version>${elasticsearch.version}</version>
     </dependency>
     <dependency>
       <groupId>com.alibaba</groupId>

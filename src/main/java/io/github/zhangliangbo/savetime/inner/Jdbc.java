@@ -881,6 +881,8 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     new LinkedBlockingQueue<>(Math.min(part, 1024)), new DefaultRunsPolicy());
         }
 
+        Future<Integer> tail = null;
+
         AtomicLong total = new AtomicLong(0);
         String querySql = String.format("select * from %s where %s and %s>? order by %s limit ?", table, condition, primary, primary);
         try {
@@ -912,7 +914,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     if (Objects.isNull(executorService)) {
                         callable.call();
                     } else {
-                        executorService.submit(callable);
+                        tail = executorService.submit(callable);
                     }
                 }
                 if (CollectionUtils.isNotEmpty(replaces)) {
@@ -927,7 +929,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                     if (Objects.isNull(executorService)) {
                         callable.call();
                     } else {
-                        executorService.submit(callable);
+                        tail = executorService.submit(callable);
                     }
                 }
 
@@ -935,6 +937,12 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             }
         } catch (Exception e) {
             System.out.println("transferByQuery报错" + e);
+        }
+
+        if (Objects.nonNull(tail)) {
+            System.out.printf("等待最后一个完成开始 %s%n", Thread.currentThread().getName());
+            Integer integer = tail.get();
+            System.out.printf("等待最后一个完成结束 %s %s%n", Thread.currentThread().getName(), integer);
         }
 
         if (Objects.nonNull(executorService)) {
