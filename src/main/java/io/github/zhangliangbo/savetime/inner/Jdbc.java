@@ -868,8 +868,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
 
         String primary = getPrimaryColumn(key, schema, table);
 
-        String countSql = String.format("select count(*) from %s where %s", table, condition);
-        long count = ((Number) countByQuery(key, schema, table, countSql)).longValue();
+        long count = ((Number) countByQuery(key, schema, table, condition)).longValue();
 
         ExecutorService executorService = null;
         int size = 1000;
