@@ -1029,8 +1029,8 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         StartTrialResponse startTrialResponse = getOrCreate(key).license().startTrial(startTrialRequest, RequestOptions.DEFAULT);
 
         ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
-        objectNode.put("isAcknowledged", startTrialResponse.isAcknowledged());
-        objectNode.put("isTrialWasStarted", startTrialResponse.isTrialWasStarted());
+        objectNode.put("acknowledged", startTrialResponse.isAcknowledged());
+        objectNode.put("trialWasStarted", startTrialResponse.isTrialWasStarted());
         objectNode.put("licenseType", startTrialResponse.getLicenseType());
         objectNode.put("acknowledgeHeader", startTrialResponse.getAcknowledgeHeader());
         objectNode.put("errorMessage", startTrialResponse.getErrorMessage());
@@ -1051,8 +1051,8 @@ public class ElasticSearch extends AbstractConfigurable<RestHighLevelClient> {
         StartBasicResponse startBasicResponse = getOrCreate(key).license().startBasic(startBasicRequest, RequestOptions.DEFAULT);
 
         ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
-        objectNode.put("isAcknowledged", startBasicResponse.isAcknowledged());
-        objectNode.put("isBasicStarted", startBasicResponse.isBasicStarted());
+        objectNode.put("acknowledged", startBasicResponse.isAcknowledged());
+        objectNode.put("basicStarted", startBasicResponse.isBasicStarted());
         objectNode.put("status", startBasicResponse.getStatus().name());
         objectNode.put("acknowledgeMessage", startBasicResponse.getAcknowledgeMessage());
         objectNode.put("errorMessage", startBasicResponse.getErrorMessage());
