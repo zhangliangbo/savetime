@@ -983,4 +983,55 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
                 .stream().findFirst().orElse(0L);
     }
 
+    /**
+     * 导出sql文件
+     *
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param batchSize 每次查询的批量大小
+     * @return 导出结果
+     */
+    public Pair<List<String>, Duration> exportInsertSqlByQuery(String key, String schema, String table, String condition, int batchSize) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+
+        List<String> result = new LinkedList<>();
+
+        String primary = getPrimaryColumn(key, schema, table);
+        String querySql = String.format("select * from %s where %s and %s>? order by %s limit ?", table, condition, primary, primary);
+
+        long last = 0L;
+        while (true) {
+            List<Map<String, Object>> page = queryList(key, schema, querySql, last, batchSize);
+            if (page.isEmpty()) {
+                break;
+            }
+
+            List<String> sqlList = new LinkedList<>();
+
+            for (Map<String, Object> record : page) {
+                String format = toInsertSql(table, record);
+                sqlList.add(format);
+            }
+
+            result.addAll(sqlList);
+
+            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
+        }
+
+        return Pair.of(result, sw.stop().elapsed());
+    }
+
+    /**
+     * 导出sql文件
+     *
+     * @param key    环境
+     * @param schema 数据库
+     * @param table  表格
+     * @return 导出结果
+     */
+    public Pair<List<String>, Duration> exportInsertSqlByQuery(String key, String schema, String table, String condition) throws Exception {
+        return exportInsertSqlByQuery(key, schema, table, condition, 1000);
+    }
+
 }

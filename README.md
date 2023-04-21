@@ -10,6 +10,17 @@ or [user guide](http://nbviewer.org/github/zhangliangbo/notebook/blob/main/savet
 
 所有连接信息通过配置文件指定，适用多环境，每个环境的连接信息通过`key`来指定。
 
+# 可视化
+所有输出基本都是基本类型或`com.fasterxml.jackson.databind.JsonNode`。
+
+数据展示使用`https://github.com/Kotlin/dataframe`
+
+```kotlin
+fun JsonNode.toDf(): DataFrame<*>{
+    return DataFrame.readJsonStr(this.toString())
+}
+```
+
 # 门面
 
 ```
