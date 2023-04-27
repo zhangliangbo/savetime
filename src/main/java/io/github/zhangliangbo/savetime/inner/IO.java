@@ -25,6 +25,8 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONObject;
+import org.json.XML;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.imageio.ImageIO;
@@ -640,5 +642,32 @@ public class IO {
         randomAccessFile.close();
         return false;
     }
+
+    /**
+     * 读取xml文件
+     *
+     * @param file 文件
+     * @return 结果
+     * @throws IOException 异常
+     */
+    public JsonNode readXml(File file) throws IOException {
+        JSONObject jsonObject = XML.toJSONObject(new FileReader(file));
+        String json = jsonObject.toString();
+        return readTree(json);
+    }
+
+    /**
+     * 读取xml数据
+     *
+     * @param xml 数据
+     * @return 结果
+     * @throws IOException 异常
+     */
+    public JsonNode readXml(String xml) throws IOException {
+        JSONObject jsonObject = XML.toJSONObject(xml);
+        String json = jsonObject.toString();
+        return readTree(json);
+    }
+
 
 }
