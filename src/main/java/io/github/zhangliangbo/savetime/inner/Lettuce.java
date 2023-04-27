@@ -3,17 +3,13 @@ package io.github.zhangliangbo.savetime.inner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.zhangliangbo.savetime.ST;
-import io.lettuce.core.KeyScanCursor;
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.ScanArgs;
+import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.apache.commons.collections.CollectionUtils;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -54,18 +50,59 @@ public class Lettuce extends AbstractConfigurable<StatefulRedisConnection<String
      * @param consumer 消费者
      * @throws Exception 异常
      */
-    public void scan(String key, String pattern, int limit, Consumer<List<String>> consumer) throws Exception {
-        ScanArgs scanArgs = ScanArgs.Builder.matches(pattern).limit(limit);
+    public boolean scan(String key, String pattern, int limit, Consumer<List<String>> consumer) throws Exception {
         RedisCommands<String, String> sync = getOrCreate(key).sync();
 
-        KeyScanCursor<String> keyScanCursor = sync.scan(scanArgs);
-        while (!keyScanCursor.isFinished()) {
+        ScanCursor scanCursor = ScanCursor.INITIAL;
+        boolean finished;
+        do {
+            KeyScanCursor<String> keyScanCursor = sync.scan(ScanArgs.Builder.matches(pattern).limit(limit));
             List<String> keys = keyScanCursor.getKeys();
-            if (CollectionUtils.isNotEmpty(keys)) {
-                consumer.accept(keys);
+
+            if (CollectionUtils.isEmpty(keys)) {
+                break;
             }
-            keyScanCursor = sync.scan(keyScanCursor);
-        }
+            consumer.accept(keys);
+
+            scanCursor = ScanCursor.of(keyScanCursor.getCursor());
+            finished = keyScanCursor.isFinished();
+        } while (!finished);
+
+        return true;
+    }
+
+    /**
+     * 获取键
+     *
+     * @param env 环境
+     * @param key 键
+     * @throws Exception 异常
+     */
+    public String get(String env, String key) throws Exception {
+        return getOrCreate(env).sync().get(key);
+    }
+
+    /**
+     * 删除键
+     *
+     * @param env 环境
+     * @param key 键
+     * @throws Exception 异常
+     */
+    public long del(String env, String... key) throws Exception {
+        return getOrCreate(env).sync().del(key);
+    }
+
+    /**
+     * 扫描键
+     *
+     * @param key      环境
+     * @param pattern  正则表达式
+     * @param consumer 消费者
+     * @throws Exception 异常
+     */
+    public long keys(String key, String pattern, Consumer<String> consumer) throws Exception {
+        return getOrCreate(key).sync().keys(consumer::accept, pattern);
     }
 
 }
