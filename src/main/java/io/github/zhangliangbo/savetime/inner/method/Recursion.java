@@ -1,6 +1,7 @@
 package io.github.zhangliangbo.savetime.inner.method;
 
 import io.github.zhangliangbo.savetime.inner.problem.HeapSort;
+import io.github.zhangliangbo.savetime.inner.problem.QuickSort;
 
 import java.util.Arrays;
 
@@ -8,12 +9,12 @@ import java.util.Arrays;
  * @author zhangliangbo
  * @since 2023/5/1
  */
-public class Recursion implements HeapSort {
+public class Recursion implements HeapSort, QuickSort {
 
     public static void main(String[] args) {
         Recursion recursion = new Recursion();
-        int[] a = recursion.heapSortSample();
-        recursion.heapSort(a);
+        int[] a = recursion.quickSortSample();
+        recursion.quickSort(a);
         System.out.println(Arrays.toString(a));
     }
 
@@ -73,4 +74,36 @@ public class Recursion implements HeapSort {
         }
     }
 
+    @Override
+    public void quickSort(int[] a) {
+        quickSort(a, 0, a.length - 1);
+    }
+
+    private int partition(int[] a, int p, int r) {
+        int x = a[r];
+        int i = p - 1;
+        for (int j = p; j <= r - 1; j++) {
+            if (a[j] < x) {
+                i = i + 1;
+
+                int t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+            }
+        }
+
+        int t = a[i + 1];
+        a[i + 1] = a[r];
+        a[r] = t;
+
+        return i + 1;
+    }
+
+    private void quickSort(int[] a, int p, int r) {
+        if (p < r) {
+            int q = partition(a, p, r);
+            quickSort(a, p, q - 1);
+            quickSort(a, q + 1, r);
+        }
+    }
 }
