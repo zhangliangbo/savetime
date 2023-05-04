@@ -79,16 +79,18 @@ public class Recursion implements HeapSort, QuickSort {
         quickSort(a, 0, a.length - 1);
     }
 
-    private int partition(int[] a, int p, int r) {
+    private int[] partition(int[] a, int p, int r) {
         int x = a[r];
-        int i = p - 1;
+        int lt = p - 1;
+        int eq = p - 1;
         for (int j = p; j <= r - 1; j++) {
-            if (a[j] < x) {
+            if (a[j] == x) {
+                lt = lt + 1;
+                swap(a, lt, j);
+            } else if (a[j] < x) {
                 i = i + 1;
 
-                int t = a[i];
-                a[i] = a[j];
-                a[j] = t;
+
             }
         }
 
