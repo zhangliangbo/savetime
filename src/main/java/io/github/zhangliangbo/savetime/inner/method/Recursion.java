@@ -2,8 +2,10 @@ package io.github.zhangliangbo.savetime.inner.method;
 
 import io.github.zhangliangbo.savetime.inner.problem.HeapSort;
 import io.github.zhangliangbo.savetime.inner.problem.QuickSort;
+import org.apache.commons.lang3.RandomUtils;
 
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * @author zhangliangbo
@@ -11,10 +13,12 @@ import java.util.Arrays;
  */
 public class Recursion implements HeapSort, QuickSort {
 
+    private final Random random = new Random();
+
     public static void main(String[] args) {
         Recursion recursion = new Recursion();
         int[] a = recursion.quickSortSample();
-        recursion.quickSort(a);
+        recursion.randomizedQuickSort(a);
         System.out.println(Arrays.toString(a));
     }
 
@@ -109,4 +113,24 @@ public class Recursion implements HeapSort, QuickSort {
             quickSort(a, q[1] + 1, r);
         }
     }
+
+    @Override
+    public void randomizedQuickSort(int[] a) {
+        randomizedQuickSort(a, 0, a.length - 1);
+    }
+
+    private int[] randomizedPartition(int[] a, int p, int r) {
+        int i = RandomUtils.nextInt(p, r + 1);
+        swap(a, i, r);
+        return partition(a, p, r);
+    }
+
+    private void randomizedQuickSort(int[] a, int p, int r) {
+        if (p < r) {
+            int[] q = randomizedPartition(a, p, r);
+            randomizedQuickSort(a, p, q[0] - 1);
+            randomizedQuickSort(a, q[1] + 1, r);
+        }
+    }
+
 }

@@ -12,4 +12,6 @@ public interface QuickSort extends InPlaceSort {
 
     void quickSort(int[] a);
 
+    void randomizedQuickSort(int[] a);
+
 }
