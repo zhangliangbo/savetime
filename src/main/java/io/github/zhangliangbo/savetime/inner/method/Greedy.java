@@ -30,6 +30,7 @@ public class Greedy implements MaxSubArray {
 
         for (int i = 1; i < nums.length; i++) {
             int plus = pre + nums[i];
+
             if (plus > nums[i]) {
                 dp = plus;
                 high = i;
@@ -37,11 +38,14 @@ public class Greedy implements MaxSubArray {
                 dp = nums[i];
                 low = i;
             }
+
             if (dp > max) {
                 max = dp;
                 maxLeft = low;
                 maxRight = high;
             }
+
+            pre = dp;
         }
         return new int[]{maxLeft, maxRight, max};
     }
