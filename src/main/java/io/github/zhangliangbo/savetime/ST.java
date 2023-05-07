@@ -45,6 +45,7 @@ public final class ST {
     public static final DivideConquer divideConquer = new DivideConquer();
     public static final Greedy greedy = new Greedy();
     public static final Recursion recursion = new Recursion();
+    public static final Iteration iteration = new Iteration();
 
     public static <T> List<T> listOf(Iterable<T> iterable) {
         return List.ofAll(iterable);
