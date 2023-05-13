@@ -2,24 +2,22 @@ package io.github.zhangliangbo.savetime.inner.method;
 
 import io.github.zhangliangbo.savetime.inner.problem.HeapSort;
 import io.github.zhangliangbo.savetime.inner.problem.QuickSort;
+import io.github.zhangliangbo.savetime.inner.problem.RandomizedSelect;
 import org.apache.commons.lang3.RandomUtils;
 
 import java.util.Arrays;
-import java.util.Random;
 
 /**
  * @author zhangliangbo
  * @since 2023/5/1
  */
-public class Recursion implements HeapSort, QuickSort {
-
-    private final Random random = new Random();
+public class Recursion implements HeapSort, QuickSort, RandomizedSelect {
 
     public static void main(String[] args) {
         Recursion recursion = new Recursion();
-        int[] a = recursion.quickSortSample();
-        recursion.randomizedQuickSort(a);
-        System.out.println(Arrays.toString(a));
+        int[] a = recursion.randomizedSelectSample();
+        int i = recursion.randomizedSelect(a, 6);
+        System.out.println(i);
     }
 
     @Override
@@ -83,6 +81,11 @@ public class Recursion implements HeapSort, QuickSort {
         quickSort(a, 0, a.length - 1);
     }
 
+    /**
+     * a中的元素互异时，返回的两个位置相同
+     *
+     * @return [主元开始的位置，主元结束的位置]
+     */
     private int[] partition(int[] a, int p, int r) {
         int x = a[r];
 
@@ -130,6 +133,26 @@ public class Recursion implements HeapSort, QuickSort {
             int[] q = randomizedPartition(a, p, r);
             randomizedQuickSort(a, p, q[0] - 1);
             randomizedQuickSort(a, q[1] + 1, r);
+        }
+    }
+
+    @Override
+    public int randomizedSelect(int[] a, int i) {
+        return randomizedSelect(a, 0, a.length - 1, i);
+    }
+
+    private int randomizedSelect(int[] a, int p, int r, int i) {
+        if (p == r) {
+            return a[p];
+        }
+        int[] q = randomizedPartition(a, p, r);
+        int k = q[0] - p + 1;
+        if (i == k) {
+            return a[q[0]];
+        } else if (i < k) {
+            return randomizedSelect(a, p, q[0] - 1, i);
+        } else {
+            return randomizedSelect(a, q[1] + 1, r, i - k);
         }
     }
 
