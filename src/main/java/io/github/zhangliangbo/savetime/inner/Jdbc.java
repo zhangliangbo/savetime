@@ -576,18 +576,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
         for (Map.Entry<String, Object> entry : record.entrySet()) {
             keyJoiner.add(entry.getKey());
             Object value = entry.getValue();
-            String v;
-            if (value instanceof String) {
-                v = "'" + ((String) value).replace("'", "''") + "'";
-            } else if (value instanceof java.sql.Timestamp) {
-                v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
-            } else if (value instanceof java.sql.Date) {
-                v = "'" + DateFormatUtils.format((java.sql.Date) value, "yyyy-MM-dd") + "'";
-            } else if (value instanceof java.sql.Time) {
-                v = "'" + DateFormatUtils.format((java.sql.Time) value, "HH:mm:ss") + "'";
-            } else {
-                v = Objects.isNull(value) ? "null" : value.toString();
-            }
+            String v = formatValue(value);
             valueJoiner.add(v);
         }
         return String.format(insertSql, table, keyJoiner, valueJoiner);
@@ -989,6 +978,7 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
      * @param key       环境
      * @param schema    数据库
      * @param table     表格
+     * @param condition 条件
      * @param batchSize 每次查询的批量大小
      * @return 导出结果
      */
@@ -1025,13 +1015,98 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
     /**
      * 导出sql文件
      *
-     * @param key    环境
-     * @param schema 数据库
-     * @param table  表格
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param condition 条件
      * @return 导出结果
      */
     public Pair<List<String>, Duration> exportInsertSqlByQuery(String key, String schema, String table, String condition) throws Exception {
         return exportInsertSqlByQuery(key, schema, table, condition, 1000);
+    }
+
+    /**
+     * 导出update sql文件
+     *
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param condition 条件
+     * @return 导出结果
+     */
+    public Pair<List<String>, Duration> exportUpdateSqlByQuery(String key, String schema, String table, String condition, int batchSize) throws Exception {
+        Stopwatch sw = Stopwatch.createStarted();
+
+        List<String> result = new LinkedList<>();
+
+        String primary = getPrimaryColumn(key, schema, table);
+        String querySql = String.format("select * from %s where %s and %s>? order by %s limit ?", table, condition, primary, primary);
+
+        long last = 0L;
+        while (true) {
+            List<Map<String, Object>> page = queryList(key, schema, querySql, last, batchSize);
+            if (page.isEmpty()) {
+                break;
+            }
+
+            List<String> sqlList = new LinkedList<>();
+
+            for (Map<String, Object> record : page) {
+                String format = toUpdateSql(table, record, primary);
+                sqlList.add(format);
+            }
+
+            result.addAll(sqlList);
+
+            last = Long.parseLong(String.valueOf(page.get(page.size() - 1).get(primary)));
+        }
+
+        return Pair.of(result, sw.stop().elapsed());
+    }
+
+    public String toUpdateSql(String table, Map<String, Object> record, String primary) {
+        String updateSql = "update %s set %s where %s=%s;";
+        Object primaryValue = null;
+        StringJoiner valueJoiner = new StringJoiner(",");
+        for (Map.Entry<String, Object> entry : record.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if (Objects.equals(key, primary)) {
+                primaryValue = value;
+            } else {
+                valueJoiner.add(key + "=" + value);
+            }
+        }
+        return String.format(updateSql, table, valueJoiner, primary, primaryValue);
+    }
+
+    private String formatValue(Object value) {
+        String v;
+        if (value instanceof String) {
+            v = "'" + ((String) value).replace("'", "''") + "'";
+        } else if (value instanceof java.sql.Timestamp) {
+            v = "'" + DateFormatUtils.format((java.sql.Timestamp) value, "yyyy-MM-dd HH:mm:ss") + "'";
+        } else if (value instanceof java.sql.Date) {
+            v = "'" + DateFormatUtils.format((java.sql.Date) value, "yyyy-MM-dd") + "'";
+        } else if (value instanceof java.sql.Time) {
+            v = "'" + DateFormatUtils.format((java.sql.Time) value, "HH:mm:ss") + "'";
+        } else {
+            v = Objects.isNull(value) ? "null" : value.toString();
+        }
+        return v;
+    }
+
+    /**
+     * 导出update sql文件
+     *
+     * @param key       环境
+     * @param schema    数据库
+     * @param table     表格
+     * @param condition 条件
+     * @return 导出结果
+     */
+    public Pair<List<String>, Duration> exportUpdateSqlByQuery(String key, String schema, String table, String condition) throws Exception {
+        return exportUpdateSqlByQuery(key, schema, table, condition, 1000);
     }
 
 }
