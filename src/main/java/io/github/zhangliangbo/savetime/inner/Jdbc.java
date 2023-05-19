@@ -1074,7 +1074,8 @@ public class Jdbc extends AbstractConfigurable<QueryRunner> {
             if (Objects.equals(key, primary)) {
                 primaryValue = value;
             } else {
-                valueJoiner.add(key + "=" + value);
+                String v = formatValue(value);
+                valueJoiner.add(key + "=" + v);
             }
         }
         return String.format(updateSql, table, valueJoiner, primary, primaryValue);
