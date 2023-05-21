@@ -104,7 +104,7 @@ public class BinaryTree {
     /**
      * 【迭代】后继结点
      *
-     * @param x   根结点
+     * @param x   任意一个结点
      * @param <T> 卫星数据
      * @return 后继结点
      */
@@ -121,11 +121,11 @@ public class BinaryTree {
     }
 
     /**
-     * 【迭代】后继结点
+     * 【迭代】前驱结点
      *
-     * @param x   根结点
+     * @param x   任意一个结点
      * @param <T> 卫星数据
-     * @return 后继结点
+     * @return 前驱结点
      */
     public <T extends Comparable<T>> BinaryNode<T> treePredecessor(BinaryNode<T> x) {
         if (x.getLeft() != null) {
