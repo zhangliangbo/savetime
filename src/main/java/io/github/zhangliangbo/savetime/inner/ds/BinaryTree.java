@@ -20,7 +20,10 @@ public class BinaryTree<T extends Comparable<T>> {
     public static void main(String[] args) {
         BinaryNode<Integer> root = BinaryData.data_12_3();
         BinaryTree<Integer> binaryTree = new BinaryTree<>(root);
-        binaryTree.treeInsert(binaryTree, new BinaryNode<>(13));
+        BinaryNode<Integer> n18 = binaryTree.treeSearch(root, 18);
+        binaryTree.inorderTreeWalk(binaryTree.getRoot());
+        System.out.println("==========");
+        binaryTree.treeDelete(binaryTree, n18);
         binaryTree.inorderTreeWalk(binaryTree.getRoot());
     }
 
@@ -167,6 +170,50 @@ public class BinaryTree<T extends Comparable<T>> {
             y.setLeft(z);
         } else {
             y.setRight(z);
+        }
+    }
+
+    /**
+     * 用一颗以v为根的子树来替换以u为根的子树，结点u的双亲就变为结点v的双亲
+     *
+     * @param t 树
+     * @param u u根
+     * @param v v根
+     */
+    public void transplant(BinaryTree<T> t, BinaryNode<T> u, BinaryNode<T> v) {
+        if (u.getP() == null) {
+            t.setRoot(v);
+        } else if (u == u.getP().getLeft()) {
+            u.getP().setLeft(v);
+        } else {
+            u.getP().setRight(v);
+        }
+        if (v != null) {
+            v.setP(u.getP());
+        }
+    }
+
+    /**
+     * 删除
+     *
+     * @param t 树
+     * @param z 待删除结点
+     */
+    public void treeDelete(BinaryTree<T> t, BinaryNode<T> z) {
+        if (z.getLeft() == null) {
+            transplant(t, z, z.getRight());
+        } else if (z.getRight() == null) {
+            transplant(t, z, z.getLeft());
+        } else {
+            BinaryNode<T> y = treeMinimum(z.getRight());
+            if (y.getP() != z) {
+                transplant(t, y, y.getRight());
+                y.setRight(z.getRight());
+                y.getRight().setP(y);
+            }
+            transplant(t, z, y);
+            y.setLeft(z.getLeft());
+            y.getLeft().setP(y);
         }
     }
 
