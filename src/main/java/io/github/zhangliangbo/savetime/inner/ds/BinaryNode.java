@@ -8,7 +8,6 @@ import lombok.*;
  */
 @Getter
 @Setter
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 public class BinaryNode<T extends Comparable<T>> {
@@ -20,4 +19,12 @@ public class BinaryNode<T extends Comparable<T>> {
     public BinaryNode(T key) {
         this.key = key;
     }
+
+    @Override
+    public String toString() {
+        return "BinaryNode{" +
+                "key=" + key +
+                '}';
+    }
+
 }

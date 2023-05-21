@@ -14,7 +14,11 @@ package io.github.zhangliangbo.savetime.inner.ds;
 public class BinaryTree {
     public static void main(String[] args) {
         BinaryTree binaryTree = new BinaryTree();
-        binaryTree.inorderTreeWalk(BinaryData.data_12_1_a());
+        BinaryNode<Integer> data122 = BinaryData.data_12_2();
+        binaryTree.inorderTreeWalk(data122);
+        BinaryNode<Integer> bn13 = binaryTree.treeSearch(data122, 6);
+        BinaryNode<Integer> successor = binaryTree.treePredecessor(bn13);
+        System.out.println(successor);
     }
 
     /**
@@ -110,6 +114,25 @@ public class BinaryTree {
         }
         BinaryNode<T> y = x.getP();
         while (y != null && x == y.getRight()) {
+            x = y;
+            y = y.getP();
+        }
+        return y;
+    }
+
+    /**
+     * 【迭代】后继结点
+     *
+     * @param x   根结点
+     * @param <T> 卫星数据
+     * @return 后继结点
+     */
+    public <T extends Comparable<T>> BinaryNode<T> treePredecessor(BinaryNode<T> x) {
+        if (x.getLeft() != null) {
+            return treeMaximum(x.getLeft());
+        }
+        BinaryNode<T> y = x.getP();
+        while (y != null && x == y.getLeft()) {
             x = y;
             y = y.getP();
         }
