@@ -16,7 +16,7 @@ public class BinaryTree {
         BinaryTree binaryTree = new BinaryTree();
         BinaryNode<Integer> data122 = BinaryData.data_12_2();
         binaryTree.inorderTreeWalk(data122);
-        BinaryNode<Integer> bn13 = binaryTree.treeSearch(data122, 6);
+        BinaryNode<Integer> bn13 = binaryTree.treeSearch(data122, 7);
         BinaryNode<Integer> successor = binaryTree.treePredecessor(bn13);
         System.out.println(successor);
     }
