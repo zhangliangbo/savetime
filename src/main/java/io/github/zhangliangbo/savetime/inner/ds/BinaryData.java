@@ -99,4 +99,39 @@ public class BinaryData {
 
         return n15;
     }
+
+    public static BinaryNode<Integer> data_12_3() {
+        BinaryNode<Integer> n12 = new BinaryNode<>(12);
+        BinaryNode<Integer> n5 = new BinaryNode<>(5);
+        BinaryNode<Integer> n18 = new BinaryNode<>(18);
+        BinaryNode<Integer> n2 = new BinaryNode<>(2);
+        BinaryNode<Integer> n9 = new BinaryNode<>(9);
+        BinaryNode<Integer> n15 = new BinaryNode<>(15);
+        BinaryNode<Integer> n19 = new BinaryNode<>(19);
+        BinaryNode<Integer> n17 = new BinaryNode<>(17);
+
+        n12.setLeft(n5);
+        n12.setRight(n18);
+
+        n5.setP(n12);
+        n5.setLeft(n2);
+        n5.setRight(n9);
+
+        n18.setP(n12);
+        n18.setLeft(n15);
+        n18.setRight(n19);
+
+        n2.setP(n5);
+
+        n9.setP(n5);
+
+        n15.setP(n18);
+        n15.setRight(n17);
+
+        n19.setP(n18);
+
+        n17.setP(n15);
+
+        return n12;
+    }
 }

@@ -1,5 +1,8 @@
 package io.github.zhangliangbo.savetime.inner.ds;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * 二叉搜索树
  * <p>
@@ -11,23 +14,28 @@ package io.github.zhangliangbo.savetime.inner.ds;
  * @author zhangliangbo
  * @since 2023/5/18
  */
-public class BinaryTree {
+@Setter
+@Getter
+public class BinaryTree<T extends Comparable<T>> {
     public static void main(String[] args) {
-        BinaryTree binaryTree = new BinaryTree();
-        BinaryNode<Integer> data122 = BinaryData.data_12_2();
-        binaryTree.inorderTreeWalk(data122);
-        BinaryNode<Integer> bn13 = binaryTree.treeSearch(data122, 7);
-        BinaryNode<Integer> successor = binaryTree.treePredecessor(bn13);
-        System.out.println(successor);
+        BinaryNode<Integer> root = BinaryData.data_12_3();
+        BinaryTree<Integer> binaryTree = new BinaryTree<>(root);
+        binaryTree.treeInsert(binaryTree, new BinaryNode<>(13));
+        binaryTree.inorderTreeWalk(binaryTree.getRoot());
+    }
+
+    private BinaryNode<T> root;
+
+    public BinaryTree(BinaryNode<T> root) {
+        this.root = root;
     }
 
     /**
      * 【递归】中序遍历
      *
-     * @param x   根结点
-     * @param <T> 卫星数据
+     * @param x 根结点
      */
-    public <T extends Comparable<T>> void inorderTreeWalk(BinaryNode<T> x) {
+    public void inorderTreeWalk(BinaryNode<T> x) {
         if (x != null) {
             inorderTreeWalk(x.getLeft());
             System.out.println(x.getKey());
@@ -38,12 +46,11 @@ public class BinaryTree {
     /**
      * 【递归】查找
      *
-     * @param x   根结点
-     * @param k   关键字
-     * @param <T> 卫星数据
+     * @param x 根结点
+     * @param k 关键字
      * @return 关键字的结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> treeSearch(BinaryNode<T> x, T k) {
+    public BinaryNode<T> treeSearch(BinaryNode<T> x, T k) {
         if (x == null || k.compareTo(x.getKey()) == 0) {
             return x;
         }
@@ -57,12 +64,11 @@ public class BinaryTree {
     /**
      * 【迭代】查找
      *
-     * @param x   根结点
-     * @param k   关键字
-     * @param <T> 卫星数据
+     * @param x 根结点
+     * @param k 关键字
      * @return 关键字的结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> iterativeTreeSearch(BinaryNode<T> x, T k) {
+    public BinaryNode<T> iterativeTreeSearch(BinaryNode<T> x, T k) {
         while (x != null && k.compareTo(x.getKey()) != 0) {
             if (k.compareTo(x.getKey()) < 0) {
                 x = x.getLeft();
@@ -76,11 +82,10 @@ public class BinaryTree {
     /**
      * 【迭代】最小结点
      *
-     * @param x   根结点
-     * @param <T> 卫星数据
+     * @param x 根结点
      * @return 最小结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> treeMinimum(BinaryNode<T> x) {
+    public BinaryNode<T> treeMinimum(BinaryNode<T> x) {
         while (x.getLeft() != null) {
             x = x.getLeft();
         }
@@ -90,11 +95,10 @@ public class BinaryTree {
     /**
      * 【迭代】最大结点
      *
-     * @param x   根结点
-     * @param <T> 卫星数据
+     * @param x 根结点
      * @return 最大结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> treeMaximum(BinaryNode<T> x) {
+    public BinaryNode<T> treeMaximum(BinaryNode<T> x) {
         while (x.getRight() != null) {
             x = x.getRight();
         }
@@ -104,11 +108,10 @@ public class BinaryTree {
     /**
      * 【迭代】后继结点
      *
-     * @param x   任意一个结点
-     * @param <T> 卫星数据
+     * @param x 任意一个结点
      * @return 后继结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> treeSuccessor(BinaryNode<T> x) {
+    public BinaryNode<T> treeSuccessor(BinaryNode<T> x) {
         if (x.getRight() != null) {
             return treeMinimum(x.getRight());
         }
@@ -123,11 +126,10 @@ public class BinaryTree {
     /**
      * 【迭代】前驱结点
      *
-     * @param x   任意一个结点
-     * @param <T> 卫星数据
+     * @param x 任意一个结点
      * @return 前驱结点
      */
-    public <T extends Comparable<T>> BinaryNode<T> treePredecessor(BinaryNode<T> x) {
+    public BinaryNode<T> treePredecessor(BinaryNode<T> x) {
         if (x.getLeft() != null) {
             return treeMaximum(x.getLeft());
         }
@@ -137,6 +139,35 @@ public class BinaryTree {
             y = y.getP();
         }
         return y;
+    }
+
+    /**
+     * 插入
+     *
+     * @param t 树
+     * @param z 待插入结点
+     */
+    public void treeInsert(BinaryTree<T> t, BinaryNode<T> z) {
+        BinaryNode<T> y = null;
+
+        BinaryNode<T> x = t.getRoot();
+
+        while (x != null) {
+            y = x;
+            if (z.getKey().compareTo(x.getKey()) < 0) {
+                x = x.getLeft();
+            } else {
+                x = x.getRight();
+            }
+        }
+        z.setP(y);
+        if (y == null) {
+            t.setRoot(z);
+        } else if (z.getKey().compareTo(y.getKey()) < 0) {
+            y.setLeft(z);
+        } else {
+            y.setRight(z);
+        }
     }
 
 }
