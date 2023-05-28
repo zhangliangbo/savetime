@@ -12,20 +12,21 @@ public class RedBlackData {
     private static RedBlackNode<Integer> fromMap(Map<Integer, Integer> map) {
         Map<Integer, RedBlackNode<Integer>> nodeMap = new HashMap<>();
 
-        int length = Integer.MIN_VALUE;
+        int height = 0;
         for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
             Integer index = entry.getKey();
             Integer value = entry.getValue();
 
-            if (index > length) {
-                length = index;
+            if (index > Math.pow(2, height)) {
+                height++;
             }
 
             nodeMap.put(index, new RedBlackNode<>(value));
         }
 
         RedBlackNode<Integer> root = nodeMap.get(1);
-        for (int i = 0; (i << 1) + 1 < length + 1; i++) {
+        int max = (int) Math.pow(2, height);
+        for (int i = 1; (i << 1) + 1 <= max; i++) {
 
             RedBlackNode<Integer> node = nodeMap.get(i);
             int leftIndex = i << 1;
@@ -60,7 +61,10 @@ public class RedBlackData {
         map.put(8, 2);
         map.put(14, 14);
         map.put(15, 19);
-        map.put(15, 19);
+        map.put(28, 12);
+        map.put(29, 17);
+        map.put(31, 22);
+        map.put(62, 20);
         return fromMap(map);
     }
 

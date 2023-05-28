@@ -20,8 +20,15 @@ import lombok.Setter;
 @Getter
 public class RedBlackTree<T extends Comparable<T>> {
     public static void main(String[] args) {
-        RedBlackNode<Integer> node = RedBlackData.data_13_3();
-        System.out.println(node);
+        RedBlackNode<Integer> root = RedBlackData.data_13_3();
+        RedBlackTree<Integer> tree = new RedBlackTree<>(root);
+        tree.inorderTreeWalk(tree.getRoot());
+        RedBlackNode<Integer> n11 = tree.treeSearch(root, 11);
+        tree.leftRotate(tree, n11);
+        tree.inorderTreeWalk(tree.getRoot());
+        RedBlackNode<Integer> n18 = tree.treeSearch(root, 18);
+        tree.rightRotate(tree, n18);
+        tree.inorderTreeWalk(tree.getRoot());
     }
 
     private RedBlackNode<T> root;
@@ -30,6 +37,37 @@ public class RedBlackTree<T extends Comparable<T>> {
 
     public RedBlackTree(RedBlackNode<T> root) {
         this.root = root;
+    }
+
+    /**
+     * 【递归】中序遍历
+     *
+     * @param x 根结点
+     */
+    public void inorderTreeWalk(RedBlackNode<T> x) {
+        if (x != null) {
+            inorderTreeWalk(x.getLeft());
+            System.out.println(x.getKey());
+            inorderTreeWalk(x.getRight());
+        }
+    }
+
+    /**
+     * 【递归】查找
+     *
+     * @param x 根结点
+     * @param k 关键字
+     * @return 关键字的结点
+     */
+    public RedBlackNode<T> treeSearch(RedBlackNode<T> x, T k) {
+        if (x == null || k.compareTo(x.getKey()) == 0) {
+            return x;
+        }
+        if (k.compareTo(x.getKey()) < 0) {
+            return treeSearch(x.getLeft(), k);
+        } else {
+            return treeSearch(x.getRight(), k);
+        }
     }
 
     public void leftRotate(RedBlackTree<T> t, RedBlackNode<T> x) {

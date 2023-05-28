@@ -27,4 +27,12 @@ public class RedBlackNode<T extends Comparable<T>> {
         this.color = 1;
     }
 
+    @Override
+    public String toString() {
+        return "RedBlackNode{" +
+                "color=" + color +
+                ", key=" + key +
+                '}';
+    }
+
 }
